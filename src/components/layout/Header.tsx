@@ -19,6 +19,7 @@ export function Header() {
           </span>
         </Link>
         <div className="flex items-center gap-0.5 sm:gap-1">
+          {/* ✅ زر التثبيت — ظاهر دائمًا */}
           <InstallPrompt />
           <LanguageSwitcher />
           <button
