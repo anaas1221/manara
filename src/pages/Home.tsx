@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { usePrayerTimes, formatTime12 } from '../lib/hooks/usePrayerTimes';
 import { useNextPrayerCountdown } from '../lib/hooks/useNextPrayerCountdown';
 import { db } from '../lib/db';
-
-const PRAYER_LABELS: Record<string, string> = {
-  Fajr: 'الفجر', Sunrise: 'الشروق', Dhuhr: 'الظهر',
-  Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء'
-};
 
 const SURAH_NAMES: Record<number, string> = {
   1: 'الفاتحة', 2: 'البقرة', 3: 'آل عمران', 4: 'النساء', 5: 'المائدة',
@@ -36,6 +32,7 @@ const SURAH_NAMES: Record<number, string> = {
 };
 
 export default function Home() {
+  const { t, i18n } = useTranslation();
   const { data, city, loading } = usePrayerTimes();
   const next = useNextPrayerCountdown(data);
   const [tasbeeh, setTasbeeh] = useState(0);
@@ -48,16 +45,18 @@ export default function Home() {
       .then(rows => setTasbeeh(rows.reduce((s, r) => s + r.count, 0)));
   }, []);
 
-  const hijri = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
+  const isArabic = i18n.language === 'ar';
+
+  const hijri = new Intl.DateTimeFormat(isArabic ? 'ar-SA-u-ca-islamic' : 'en-US-u-ca-islamic', {
     day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date());
-  const greg = new Intl.DateTimeFormat('ar-EG', {
+  const greg = new Intl.DateTimeFormat(isArabic ? 'ar-EG' : 'en-US', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date());
 
   const lastReadLabel = lastRead
-    ? `سورة ${SURAH_NAMES[lastRead.surah] ?? lastRead.surah} — آية ${lastRead.ayah}`
-    : 'ابدأ القراءة';
+    ? `${t('quran_surah')} ${SURAH_NAMES[lastRead.surah] ?? lastRead.surah} — ${t('quran_ayah')} ${lastRead.ayah}`
+    : t('start_reading');
 
   return (
     <div className="space-y-6">
@@ -73,12 +72,12 @@ export default function Home() {
       <section className="card p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-[var(--muted)]">الصلاة القادمة</p>
+            <p className="text-sm text-[var(--muted)]">{t('next_prayer')}</p>
             <h2 className="text-3xl font-bold mt-1">{next?.name ?? (loading ? '…' : '—')}</h2>
             <p className="text-brand-600 font-semibold mt-1">{next?.time ?? ''}</p>
           </div>
           <div className="text-left">
-            <p className="text-xs text-[var(--muted)]">متبقي</p>
+            <p className="text-xs text-[var(--muted)]">{t('remaining')}</p>
             <p className="font-mono text-lg tabular-nums">{next?.remaining ?? '--:--:--'}</p>
           </div>
         </div>
@@ -86,7 +85,7 @@ export default function Home() {
           <div className="grid grid-cols-5 gap-2 mt-5 text-center text-xs">
             {Object.entries(data.timings).map(([k, v]) => (
               <div key={k} className="py-2 rounded-lg bg-[var(--bg)]">
-                <div className="text-[var(--muted)]">{PRAYER_LABELS[k]}</div>
+                <div className="text-[var(--muted)]">{t(k.toLowerCase())}</div>
                 <div className="font-semibold mt-1 tabular-nums">{formatTime12(v)}</div>
               </div>
             ))}
@@ -94,41 +93,41 @@ export default function Home() {
         )}
       </section>
 
-      {/* Quick links — بدون التعلم */}
+      {/* Quick links */}
       <section className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Link to="/quran" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-book text-2xl text-brand-600" />
-          <p className="mt-3 text-sm text-[var(--muted)]">آخر قراءة</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">{t('home_quick_quran')}</p>
           <p className="font-semibold">{lastReadLabel}</p>
         </Link>
         <Link to="/tasbeeh" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-circle text-2xl text-brand-600" />
-          <p className="mt-3 text-sm text-[var(--muted)]">السبحة</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">{t('nav_tasbeeh')}</p>
           <p className="font-semibold">{tasbeeh}</p>
         </Link>
         <Link to="/adhkar/morning" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-sun text-2xl text-brand-600" />
-          <p className="mt-3 text-sm text-[var(--muted)]">أذكار الصباح</p>
-          <p className="font-semibold">ابدأ الجلسة</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">{t('morning_adhkar')}</p>
+          <p className="font-semibold">{t('home_start_session')}</p>
         </Link>
         <Link to="/qibla" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-compass text-2xl text-brand-600" />
-          <p className="mt-3 text-sm text-[var(--muted)]">القبلة</p>
-          <p className="font-semibold">اتجاه القبلة</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">{t('nav_qibla')}</p>
+          <p className="font-semibold">{t('home_qibla_direction')}</p>
         </Link>
         <Link to="/prayer" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-clock-history text-2xl text-brand-600" />
-          <p className="mt-3 text-sm text-[var(--muted)]">صلاتي</p>
-          <p className="font-semibold">تابع صلواتك</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">{t('my_prayer')}</p>
+          <p className="font-semibold">{t('track_prayers')}</p>
         </Link>
         <Link to="/names" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-stars text-2xl text-brand-600" />
-          <p className="mt-3 text-sm text-[var(--muted)]">أسماء الله</p>
-          <p className="font-semibold">99 اسمًا</p>
+          <p className="mt-3 text-sm text-[var(--muted)]">{t('nav_names')}</p>
+          <p className="font-semibold">{t('home_names_count')}</p>
         </Link>
       </section>
 
-      {/* رابط صغير للتعلّم — اختياري فقط */}
+      {/* Learning link */}
       <Link
         to="/learn"
         className="card p-4 flex items-center gap-3 hover:border-brand-500 transition group opacity-90"
@@ -137,8 +136,8 @@ export default function Home() {
           <i className="bi bi-mortarboard text-xl text-brand-600" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold">تريد أن تتعلّم من الصفر؟</p>
-          <p className="text-xs text-[var(--muted)] mt-0.5">مسارات تعليمية مجانية — اختيارية تمامًا</p>
+          <p className="text-sm font-semibold">{t('home_want_to_learn')}</p>
+          <p className="text-xs text-[var(--muted)] mt-0.5">{t('home_learn_desc')}</p>
         </div>
         <i className="bi bi-arrow-left text-[var(--muted)] group-hover:text-brand-600 transition" />
       </Link>

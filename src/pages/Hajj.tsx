@@ -156,15 +156,6 @@ export default function Hajj() {
         </p>
       </div>
 
-      {/* تنبيه */}
-      <div className="card p-4 bg-amber-50/60 dark:bg-amber-900/10 border-amber-500/30">
-        <div className="flex gap-3">
-          <i className="bi bi-info-circle text-amber-600 text-lg shrink-0" />
-          <div className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-            هذا الدليل للاسترشاد العام. للفتاوى والتفاصيل الفقهية، يُنصح بسؤال أهل العلم أو الرجوع لكتب المناسك الموثوقة.
-          </div>
-        </div>
-      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {HAJJ_CATEGORIES.map(cat => (

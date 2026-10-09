@@ -1,49 +1,37 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useInstallPrompt } from '../lib/hooks/useInstallPrompt';
 
 export function InstallPrompt() {
+  const { t } = useTranslation();
   const { canInstall, isInstalled, isIOS, install } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
 
-  // لو مثبت → لا تعرض زر
   if (isInstalled) return null;
 
-  // زر Header العادي
   const handleClick = async () => {
-    if (canInstall) {
-      await install();
-    } else {
-      setShowModal(true);
-    }
+    if (canInstall) await install();
+    else setShowModal(true);
   };
 
   return (
     <>
-      {/* ✅ الزر — ظاهر دائمًا */}
       <button
         onClick={handleClick}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition shadow-sm"
-        title="ثبّت منارة على جهازك"
+        title={t('install_app_title')}
       >
         <i className="bi bi-download text-sm" />
-        <span>ثبّت</span>
+        <span>{t('install_app')}</span>
       </button>
 
-      {/* Modal التعليمات */}
-      {showModal && (
-        <InstallModal
-          onClose={() => setShowModal(false)}
-          isIOS={isIOS}
-        />
-      )}
+      {showModal && <InstallModal onClose={() => setShowModal(false)} isIOS={isIOS} t={t} />}
     </>
   );
 }
 
-// ============================================
-// مكون منفصل لعرض التعليمات في الـ Settings
-// ============================================
 export function InstallButtonLarge() {
+  const { t } = useTranslation();
   const { canInstall, isInstalled, isIOS, install } = useInstallPrompt();
   const [showModal, setShowModal] = useState(false);
   const [justInstalled, setJustInstalled] = useState(false);
@@ -52,7 +40,7 @@ export function InstallButtonLarge() {
     return (
       <div className="w-full py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 text-sm font-semibold flex items-center justify-center gap-2">
         <i className="bi bi-check-circle-fill text-lg" />
-        التطبيق مثبّت على جهازك
+        {t('install_installed')}
       </div>
     );
   }
@@ -73,23 +61,15 @@ export function InstallButtonLarge() {
         className="w-full py-3 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 transition flex items-center justify-center gap-2 shadow-sm"
       >
         <i className="bi bi-download text-lg" />
-        تثبيت منارة كتطبيق
+        {t('settings_install_btn')}
       </button>
 
-      {showModal && (
-        <InstallModal
-          onClose={() => setShowModal(false)}
-          isIOS={isIOS}
-        />
-      )}
+      {showModal && <InstallModal onClose={() => setShowModal(false)} isIOS={isIOS} t={t} />}
     </>
   );
 }
 
-// ============================================
-// Modal التعليمات (يعمل على كل المتصفحات)
-// ============================================
-function InstallModal({ onClose, isIOS }: { onClose: () => void; isIOS: boolean }) {
+function InstallModal({ onClose, isIOS, t }: { onClose: () => void; isIOS: boolean; t: any }) {
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/70 flex items-end md:items-center justify-center p-4"
@@ -105,77 +85,47 @@ function InstallModal({ onClose, isIOS }: { onClose: () => void; isIOS: boolean 
               <i className="bi bi-phone text-2xl text-brand-600" />
             </div>
             <div>
-              <h3 className="font-bold">تثبيت منارة كتطبيق</h3>
-              <p className="text-xs text-[var(--muted)]">على الشاشة الرئيسية</p>
+              <h3 className="font-bold">{isIOS ? t('install_ios_title') : t('install_app_title')}</h3>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-[var(--bg)]"
-            aria-label="إغلاق"
-          >
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg)]" aria-label="Close">
             <i className="bi bi-x-lg" />
           </button>
         </div>
 
         {isIOS ? (
-          // iOS Safari
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">1</span>
-              <div>
-                اضغط على زر <i className="bi bi-box-arrow-up text-brand-600" />{' '}
-                <strong>المشاركة</strong> أسفل شاشة Safari
-              </div>
+              <div>{t('install_ios_step1')}</div>
             </li>
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">2</span>
-              <div>
-                اختر <strong>"إضافة إلى الشاشة الرئيسية"</strong>{' '}
-                <i className="bi bi-plus-square text-brand-600" />
-              </div>
-            </li>
-            <li className="flex gap-3">
-              <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">3</span>
-              <div>
-                اضغط <strong>"إضافة"</strong> في الأعلى
-              </div>
+              <div>{t('install_ios_step2')}</div>
             </li>
           </ol>
         ) : (
-          // Android / Desktop Chrome / Edge
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">1</span>
-              <div>
-                افتح قائمة المتصفح{' '}
-                <i className="bi bi-three-dots-vertical text-brand-600" />
-              </div>
+              <div>{t('install_step1')}</div>
             </li>
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">2</span>
-              <div>
-                اختر <strong>"تثبيت التطبيق"</strong> أو{' '}
-                <strong>"إضافة إلى الشاشة الرئيسية"</strong>
-              </div>
+              <div>{t('install_step2')}</div>
             </li>
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">3</span>
-              <div>اضغط <strong>"تثبيت"</strong> للتأكيد</div>
+              <div>{t('install_step3')}</div>
             </li>
           </ol>
         )}
-
-        <div className="rounded-xl bg-brand-50/50 dark:bg-brand-900/20 p-3 text-xs text-[var(--muted)] leading-relaxed">
-          <i className="bi bi-lightbulb text-brand-600" /> بمجرد التثبيت، سيعمل موقع
-          منارة كتطبيق مستقل على جهازك — مع دعم كامل للعمل بدون إنترنت.
-        </div>
 
         <button
           onClick={onClose}
           className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold"
         >
-          فهمت
+          {t('install_understood')}
         </button>
       </div>
     </div>
