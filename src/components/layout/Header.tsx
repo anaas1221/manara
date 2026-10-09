@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../providers/ThemeProvider';
 import { LanguageSwitcher } from '../LanguageSwitcher';
+import { InstallPrompt } from '../InstallPrompt';
 import { Logo } from '../brand/Logo';
 
 export function Header() {
@@ -18,6 +19,7 @@ export function Header() {
           </span>
         </Link>
         <div className="flex items-center gap-0.5 sm:gap-1">
+          <InstallPrompt />
           <LanguageSwitcher />
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
