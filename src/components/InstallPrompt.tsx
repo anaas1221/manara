@@ -10,8 +10,11 @@ export function InstallPrompt() {
   if (isInstalled) return null;
 
   const handleClick = async () => {
-    if (canInstall) await install();
-    else setShowModal(true);
+    if (canInstall) {
+      await install();
+    } else {
+      setShowModal(true);
+    }
   };
 
   return (
@@ -19,13 +22,15 @@ export function InstallPrompt() {
       <button
         onClick={handleClick}
         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-600 text-white text-xs font-bold hover:bg-brand-700 transition shadow-sm"
-        title={t('install_app_title')}
+        title={t('install_app')}
       >
         <i className="bi bi-download text-sm" />
-        <span>{t('install_app')}</span>
+        <span>{t('install')}</span>
       </button>
 
-      {showModal && <InstallModal onClose={() => setShowModal(false)} isIOS={isIOS} t={t} />}
+      {showModal && (
+        <InstallModal onClose={() => setShowModal(false)} isIOS={isIOS} />
+      )}
     </>
   );
 }
@@ -40,7 +45,7 @@ export function InstallButtonLarge() {
     return (
       <div className="w-full py-3 rounded-xl bg-green-500/10 border border-green-500/30 text-green-700 dark:text-green-300 text-sm font-semibold flex items-center justify-center gap-2">
         <i className="bi bi-check-circle-fill text-lg" />
-        {t('install_installed')}
+        {t('install_done')}
       </div>
     );
   }
@@ -61,15 +66,19 @@ export function InstallButtonLarge() {
         className="w-full py-3 rounded-xl bg-brand-600 text-white text-sm font-bold hover:bg-brand-700 transition flex items-center justify-center gap-2 shadow-sm"
       >
         <i className="bi bi-download text-lg" />
-        {t('settings_install_btn')}
+        {t('install_app')}
       </button>
 
-      {showModal && <InstallModal onClose={() => setShowModal(false)} isIOS={isIOS} t={t} />}
+      {showModal && (
+        <InstallModal onClose={() => setShowModal(false)} isIOS={isIOS} />
+      )}
     </>
   );
 }
 
-function InstallModal({ onClose, isIOS, t }: { onClose: () => void; isIOS: boolean; t: any }) {
+function InstallModal({ onClose, isIOS }: { onClose: () => void; isIOS: boolean }) {
+  const { t } = useTranslation();
+
   return (
     <div
       className="fixed inset-0 z-[100] bg-black/70 flex items-end md:items-center justify-center p-4"
@@ -85,10 +94,15 @@ function InstallModal({ onClose, isIOS, t }: { onClose: () => void; isIOS: boole
               <i className="bi bi-phone text-2xl text-brand-600" />
             </div>
             <div>
-              <h3 className="font-bold">{isIOS ? t('install_ios_title') : t('install_app_title')}</h3>
+              <h3 className="font-bold">{t('install_app')}</h3>
+              <p className="text-xs text-[var(--muted)]">{t('install_hint')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--bg)]" aria-label="Close">
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-[var(--bg)]"
+            aria-label={t('close')}
+          >
             <i className="bi bi-x-lg" />
           </button>
         </div>
@@ -97,35 +111,43 @@ function InstallModal({ onClose, isIOS, t }: { onClose: () => void; isIOS: boole
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">1</span>
-              <div>{t('install_ios_step1')}</div>
+              <div>{t('install_ios_share')}</div>
             </li>
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">2</span>
-              <div>{t('install_ios_step2')}</div>
+              <div>{t('install_ios_add')}</div>
+            </li>
+            <li className="flex gap-3">
+              <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">3</span>
+              <div>{t('install_ios_confirm')}</div>
             </li>
           </ol>
         ) : (
           <ol className="space-y-3 text-sm">
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">1</span>
-              <div>{t('install_step1')}</div>
+              <div>{t('install_and_open_menu')}</div>
             </li>
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">2</span>
-              <div>{t('install_step2')}</div>
+              <div>{t('install_and_choose')}</div>
             </li>
             <li className="flex gap-3">
               <span className="w-7 h-7 rounded-full bg-brand-600 text-white flex items-center justify-center text-xs shrink-0 font-bold">3</span>
-              <div>{t('install_step3')}</div>
+              <div>{t('install_and_confirm')}</div>
             </li>
           </ol>
         )}
+
+        <div className="rounded-xl bg-brand-50/50 dark:bg-brand-900/20 p-3 text-xs text-[var(--muted)] leading-relaxed">
+          <i className="bi bi-lightbulb text-brand-600" /> {t('install_tip')}
+        </div>
 
         <button
           onClick={onClose}
           className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold"
         >
-          {t('install_understood')}
+          {t('got_it')}
         </button>
       </div>
     </div>

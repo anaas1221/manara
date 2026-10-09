@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ls } from '../lib/storage';
 
 const KAABA = { lat: 21.4225, lon: 39.8262 };
@@ -15,13 +16,13 @@ function bearing(lat: number, lon: number) {
 type Status = 'getting-location' | 'ready' | 'need-permission' | 'no-compass' | 'error';
 
 export default function Qibla() {
+  const { t } = useTranslation();
   const [qibla, setQibla] = useState<number | null>(null);
   const [heading, setHeading] = useState<number | null>(null);
   const [status, setStatus] = useState<Status>('getting-location');
   const [error, setError] = useState<string | null>(null);
   const lastRef = useRef<{ h: number | null; t: number }>({ h: null, t: 0 });
 
-  // 1) الموقع
   useEffect(() => {
     const saved = ls.get<{ lat: number; lon: number } | null>('location', null);
     if (saved) {
@@ -30,7 +31,7 @@ export default function Qibla() {
       return;
     }
     if (!navigator.geolocation) {
-      setError('خدمة الموقع غير مدعومة.');
+      setError(t('qibla_location_unsupported'));
       setStatus('error');
       return;
     }
@@ -42,21 +43,19 @@ export default function Qibla() {
         setStatus('ready');
       },
       () => {
-        setError('تعذر الوصول لموقعك. اسمح بالوصول للموقع.');
+        setError(t('qibla_location_error'));
         setStatus('error');
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
-  }, []);
+  }, [t]);
 
-  // 2) تفعيل البوصلة تلقائيًا
   useEffect(() => {
     const DOE: any = (window as any).DeviceOrientationEvent;
     if (!DOE) {
       setStatus('no-compass');
       return;
     }
-    // iOS 13+ يحتاج طلب إذن — لكن مش دايماً محتاج
     if (typeof DOE.requestPermission === 'function') {
       DOE.requestPermission()
         .then((res: string) => {
@@ -66,37 +65,24 @@ export default function Qibla() {
     }
   }, []);
 
-  // 3) الاستماع للبوصلة — يشتغل دايمًا لو الجهاز يدعم
   useEffect(() => {
     let cancelled = false;
-
     const onOrient = (e: any) => {
       if (cancelled) return;
       let raw: number | null = null;
-
-      // iOS Safari
       if (typeof e.webkitCompassHeading === 'number' && e.webkitCompassHeading >= 0) {
         raw = e.webkitCompassHeading;
-      }
-      // Android Chrome / عام
-      else if (typeof e.alpha === 'number' && e.alpha !== null) {
-        // e.alpha: 0-360 counter-clockwise. نحوّل لـ compass heading
+      } else if (typeof e.alpha === 'number' && e.alpha !== null) {
         raw = (360 - e.alpha) % 360;
       }
-
       if (raw === null) return;
-
       const now = Date.now();
       const last = lastRef.current;
-      // تجنب التحديث السريع جدًا
       if (last.h != null && now - last.t < 30) return;
-
-      // smoothing
       let smooth: number;
       if (last.h == null) {
         smooth = raw;
       } else {
-        // حساب الفرق الأقصر (لتفادي القفزة عند 359→0)
         let diff = raw - last.h;
         if (diff > 180) diff -= 360;
         if (diff < -180) diff += 360;
@@ -105,7 +91,6 @@ export default function Qibla() {
       lastRef.current = { h: smooth, t: now };
       setHeading(smooth);
     };
-
     window.addEventListener('deviceorientationabsolute', onOrient, true);
     window.addEventListener('deviceorientation', onOrient, true);
     return () => {
@@ -124,46 +109,51 @@ export default function Qibla() {
     } catch { /* ignore */ }
   };
 
-  // دوران السهم = زاوية القبلة - زاوية الجهاز
   const qiblaRotation = qibla != null ? qibla : 0;
   const needleRotation = qibla != null && heading != null
-    ? qibla - heading
+    ? ((qibla - heading) + 360) % 360
     : qiblaRotation;
 
   return (
     <div className="max-w-md mx-auto text-center space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">اتجاه القبلة</h1>
+        <h1 className="text-2xl font-bold">{t('qibla_title')}</h1>
         <p className="text-sm text-[var(--muted)] mt-1">
           {heading != null
-            ? 'البوصلة نشطة — وجّه جهازك للأعلى ولف حول نفسك.'
+            ? t('qibla_active')
             : status === 'need-permission'
-              ? 'اضغط زر التفعيل للسماح بالبوصلة.'
+              ? t('qibla_need_permission')
               : status === 'no-compass'
-                ? 'جهازك لا يدعم البوصلة — استخدم الرقم.'
-                : 'اتجاه القبلة من الشمال الحقيقي.'}
+                ? t('qibla_no_compass')
+                : t('qibla_default')}
         </p>
       </div>
 
       {error && <div className="card p-4 text-red-500 text-sm">{error}</div>}
 
       {qibla == null && !error && (
-        <p className="text-[var(--muted)]">جاري تحديد موقعك…</p>
+        <p className="text-[var(--muted)]">{t('qibla_getting_location')}</p>
       )}
 
       {qibla != null && (
         <>
           <div className="relative w-72 h-72 mx-auto">
-            {/* الدائرة الخارجية */}
             <div className="absolute inset-0 rounded-full border-4 border-[var(--border)] bg-[var(--card)] shadow-inner" />
 
-            {/* علامات الاتجاهات */}
-            <span className="absolute top-2 left-1/2 -translate-x-1/2 text-sm text-red-500 font-bold">ش</span>
-            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-[var(--muted)] font-semibold">ج</span>
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] font-semibold">ق</span>
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] font-semibold">غ</span>
+            {/* اتجاهات البوصلة — N/S/E/W بالترجمة */}
+            <span className="absolute top-2 left-1/2 -translate-x-1/2 text-sm text-red-500 font-bold">
+              {t('compass_n')}
+            </span>
+            <span className="absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-[var(--muted)] font-semibold">
+              {t('compass_s')}
+            </span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] font-semibold">
+              {t('compass_e')}
+            </span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)] font-semibold">
+              {t('compass_w')}
+            </span>
 
-            {/* خطوط الدرجات */}
             {Array.from({ length: 36 }).map((_, i) => {
               const deg = i * 10;
               const isMajor = deg % 30 === 0;
@@ -178,7 +168,6 @@ export default function Qibla() {
               );
             })}
 
-            {/* سهم القبلة — يدور مع دوران الجهاز */}
             <div
               className="absolute inset-0 flex items-start justify-center pointer-events-none"
               style={{
@@ -191,7 +180,6 @@ export default function Qibla() {
               </div>
             </div>
 
-            {/* الكعبة في المنتصف */}
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-16 h-16 rounded-full bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center border-2 border-brand-500/30">
                 <span className="text-3xl">🕋</span>
@@ -199,14 +187,14 @@ export default function Qibla() {
             </div>
           </div>
 
-          {/* قراءة الزاوية */}
           <div className="card p-4 space-y-1">
             <div className="text-lg font-semibold text-brand-600">
-              <i className="bi bi-compass" /> {Math.round(qibla)}° من الشمال
+              <i className="bi bi-compass" /> {t('qibla_from_north', { deg: Math.round(qibla) })}
             </div>
             {heading != null && (
               <div className="text-xs text-[var(--muted)]">
-                اتجاه جهازك: {Math.round(heading)}° — {heading != null && Math.abs(((qibla - heading + 540) % 360) - 180) < 10 ? 'أنت الآن متجه للقبلة ✓' : ''}
+                {t('qibla_device_heading', { deg: Math.round(heading) })}
+                {Math.abs(((qibla - heading + 540) % 360) - 180) < 10 && ` — ${t('qibla_facing')}`}
               </div>
             )}
           </div>
@@ -216,7 +204,7 @@ export default function Qibla() {
               onClick={requestPermission}
               className="px-6 py-3 rounded-xl bg-brand-600 text-white font-semibold"
             >
-              <i className="bi bi-compass" /> تفعيل البوصلة
+              <i className="bi bi-compass" /> {t('qibla_enable')}
             </button>
           )}
         </>

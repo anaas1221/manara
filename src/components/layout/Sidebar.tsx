@@ -21,12 +21,12 @@ export function Sidebar() {
   ];
 
   const LEARNING_NAV = [
-    { path: '/learn',      label: 'تعلّم',  icon: 'bi-mortarboard' },
-    { path: '/my-journey', label: 'رحلتي',  icon: 'bi-signpost-2' },
+    { path: '/learn',      label: t('nav_learn'),      icon: 'bi-mortarboard' },
+    { path: '/my-journey', label: t('nav_my_journey'), icon: 'bi-signpost-2' },
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 shrink-0 border-l border-[var(--border)] bg-[var(--card)] sticky top-0 h-screen">
+    <aside className="hidden md:flex flex-col w-64 shrink-0 border-l border-[var(--border)] bg-[var(--card)] h-screen sticky top-0">
       <div className="p-5 border-b border-[var(--border)] shrink-0">
         <Link to="/" className="flex items-center gap-2">
           <Logo size={28} />
@@ -55,7 +55,7 @@ export function Sidebar() {
 
         <div className="mt-4 mb-2 px-3">
           <div className="text-[10px] text-[var(--muted)] font-semibold tracking-wider uppercase">
-            التعلم — اختياري
+            {t('nav_learning_optional')}
           </div>
         </div>
 

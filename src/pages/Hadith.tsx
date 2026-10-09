@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { HADITHS, HADITH_CATEGORIES, type Hadith } from '../content/hadith';
 
 export default function HadithPage() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export default function HadithPage() {
   }, [query, activeCategory]);
 
   const copyHadith = async (h: Hadith) => {
-    const text = `${h.text}\n\nالراوي: ${h.narrator}\nالمصدر: ${h.source} — ${h.book} — رقم ${h.number}\nمنارة`;
+    const text = `${h.text}\n\n${t('hadith_narrator')}: ${h.narrator}\n${t('hadith_source')}: ${h.source} — ${h.book} — ${t('hadith_number')} ${h.number}\nمنارة`;
     await navigator.clipboard.writeText(text);
     setCopied(h.id);
     setTimeout(() => setCopied(null), 2000);
@@ -35,43 +37,40 @@ export default function HadithPage() {
 
   const shareHadith = async (h: Hadith) => {
     if (navigator.share) {
-      try { await navigator.share({ title: 'حديث من منارة', text: `${h.text}\n\n${h.source}` }); } catch {}
+      try { await navigator.share({ title: t('hadith_title'), text: `${h.text}\n\n${h.source}` }); } catch { /* ignore */ }
     } else {
       await navigator.clipboard.writeText(h.text);
-      alert('تم النسخ');
+      alert(t('copied'));
     }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">الأحاديث النبوية</h1>
-        <p className="text-sm text-[var(--muted)] mt-1">
-          أحاديث من الصحيحين والسنن — بمصادرها وتخريجها
-        </p>
+        <h1 className="text-2xl font-bold">{t('hadith_title')}</h1>
+        <p className="text-sm text-[var(--muted)] mt-1">{t('hadith_subtitle')}</p>
       </div>
 
-      {/* البحث */}
       <div className="relative">
         <i className="bi bi-search absolute right-3 top-1/2 -translate-y-1/2 text-[var(--muted)]" />
         <input
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="ابحث في نص الحديث، الراوي، أو المصدر..."
+          placeholder={t('hadith_search')}
           className="w-full pr-10 pl-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] outline-none focus:border-brand-500"
         />
         {query && (
           <button
             onClick={() => setQuery('')}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--muted)]"
+            aria-label={t('clear')}
           >
             <i className="bi bi-x-circle-fill" />
           </button>
         )}
       </div>
 
-      {/* فلترة التصنيفات */}
       <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setActiveCategory(null)}
@@ -79,7 +78,7 @@ export default function HadithPage() {
             activeCategory === null ? 'bg-brand-600 text-white border-brand-600' : 'border-[var(--border)] hover:border-brand-500'
           }`}
         >
-          الكل ({HADITHS.length})
+          {t('all')} ({HADITHS.length})
         </button>
         {HADITH_CATEGORIES.map(cat => {
           const count = HADITHS.filter(h => h.category === cat).length;
@@ -98,12 +97,11 @@ export default function HadithPage() {
         })}
       </div>
 
-      {/* النتائج */}
       <div className="space-y-4">
         {filtered.length === 0 ? (
           <div className="card p-10 text-center text-[var(--muted)]">
             <i className="bi bi-search text-3xl mb-3 block" />
-            لا توجد أحاديث مطابقة
+            {t('no_results')}
           </div>
         ) : (
           filtered.map(h => (
@@ -133,14 +131,14 @@ export default function HadithPage() {
                   <button
                     onClick={() => copyHadith(h)}
                     className="p-2 rounded-lg hover:bg-[var(--bg)] text-brand-600"
-                    aria-label="نسخ"
+                    aria-label={t('copy')}
                   >
                     <i className={`bi ${copied === h.id ? 'bi-check-circle-fill' : 'bi-clipboard'} text-sm`} />
                   </button>
                   <button
                     onClick={() => shareHadith(h)}
                     className="p-2 rounded-lg hover:bg-[var(--bg)] text-brand-600"
-                    aria-label="مشاركة"
+                    aria-label={t('share')}
                   >
                     <i className="bi bi-share text-sm" />
                   </button>

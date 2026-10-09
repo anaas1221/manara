@@ -5,6 +5,15 @@ import { usePrayerTimes, formatTime12 } from '../lib/hooks/usePrayerTimes';
 import { useNextPrayerCountdown } from '../lib/hooks/useNextPrayerCountdown';
 import { db } from '../lib/db';
 
+const PRAYER_KEYS: Record<string, string> = {
+  Fajr: 'prayer_fajr',
+  Sunrise: 'prayer_sunrise',
+  Dhuhr: 'prayer_dhuhr',
+  Asr: 'prayer_asr',
+  Maghrib: 'prayer_maghrib',
+  Isha: 'prayer_isha',
+};
+
 const SURAH_NAMES: Record<number, string> = {
   1: 'الفاتحة', 2: 'البقرة', 3: 'آل عمران', 4: 'النساء', 5: 'المائدة',
   6: 'الأنعام', 7: 'الأعراف', 8: 'الأنفال', 9: 'التوبة', 10: 'يونس',
@@ -32,7 +41,7 @@ const SURAH_NAMES: Record<number, string> = {
 };
 
 export default function Home() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { data, city, loading } = usePrayerTimes();
   const next = useNextPrayerCountdown(data);
   const [tasbeeh, setTasbeeh] = useState(0);
@@ -45,17 +54,15 @@ export default function Home() {
       .then(rows => setTasbeeh(rows.reduce((s, r) => s + r.count, 0)));
   }, []);
 
-  const isArabic = i18n.language === 'ar';
-
-  const hijri = new Intl.DateTimeFormat(isArabic ? 'ar-SA-u-ca-islamic' : 'en-US-u-ca-islamic', {
+  const hijri = new Intl.DateTimeFormat('ar-SA-u-ca-islamic', {
     day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date());
-  const greg = new Intl.DateTimeFormat(isArabic ? 'ar-EG' : 'en-US', {
+  const greg = new Intl.DateTimeFormat('ar-EG', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date());
 
   const lastReadLabel = lastRead
-    ? `${t('quran_surah')} ${SURAH_NAMES[lastRead.surah] ?? lastRead.surah} — ${t('quran_ayah')} ${lastRead.ayah}`
+    ? `${t('surah_word')} ${SURAH_NAMES[lastRead.surah] ?? lastRead.surah} — ${t('ayah_word')} ${lastRead.ayah}`
     : t('start_reading');
 
   return (
@@ -83,12 +90,14 @@ export default function Home() {
         </div>
         {data && (
           <div className="grid grid-cols-5 gap-2 mt-5 text-center text-xs">
-            {Object.entries(data.timings).map(([k, v]) => (
-              <div key={k} className="py-2 rounded-lg bg-[var(--bg)]">
-                <div className="text-[var(--muted)]">{t(k.toLowerCase())}</div>
-                <div className="font-semibold mt-1 tabular-nums">{formatTime12(v)}</div>
-              </div>
-            ))}
+            {Object.entries(data.timings)
+              .filter(([k]) => k !== 'Sunrise')
+              .map(([k, v]) => (
+                <div key={k} className="py-2 rounded-lg bg-[var(--bg)]">
+                  <div className="text-[var(--muted)]">{t(PRAYER_KEYS[k] || k)}</div>
+                  <div className="font-semibold mt-1 tabular-nums">{formatTime12(v)}</div>
+                </div>
+              ))}
           </div>
         )}
       </section>
@@ -118,7 +127,7 @@ export default function Home() {
         <Link to="/prayer" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-clock-history text-2xl text-brand-600" />
           <p className="mt-3 text-sm text-[var(--muted)]">{t('my_prayer')}</p>
-          <p className="font-semibold">{t('track_prayers')}</p>
+          <p className="font-semibold">{t('home_track_prayers')}</p>
         </Link>
         <Link to="/names" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-stars text-2xl text-brand-600" />

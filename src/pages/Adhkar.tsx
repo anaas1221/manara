@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ADHKAR_CATEGORIES } from '../content/adhkar';
 import { ls } from '../lib/storage';
 
@@ -9,6 +10,7 @@ interface TodayProgress {
 }
 
 export default function Adhkar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [completedToday, setCompletedToday] = useState<Record<string, boolean>>({});
 
@@ -27,25 +29,21 @@ export default function Adhkar() {
   const completedCount = Object.values(completedToday).filter(Boolean).length;
   const totalCount = ADHKAR_CATEGORIES.length;
 
-  // فتح عادي — كل الأذكار
   const openFree = (slug: string) => navigate(`/adhkar/${slug}`);
-  // فتح بتحدي — مع شاشة تحديد الهدف
   const openChallenge = (slug: string) => navigate(`/adhkar/${slug}?setup=1`);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">الأذكار</h1>
-        <p className="text-sm text-[var(--muted)] mt-1">
-          اختر الفئة لبدء جلسة الأذكار
-        </p>
+        <h1 className="text-2xl font-bold">{t('adhkar_title')}</h1>
+        <p className="text-sm text-[var(--muted)] mt-1">{t('adhkar_subtitle')}</p>
       </div>
 
       {/* شريط التقدم اليومي */}
       <div className="card p-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-semibold">
-            <i className="bi bi-calendar-check text-brand-600" /> ورد اليوم
+            <i className="bi bi-calendar-check text-brand-600" /> {t('daily_wird')}
           </span>
           <span className="text-sm text-[var(--muted)]">
             {completedCount} / {totalCount}
@@ -59,7 +57,7 @@ export default function Adhkar() {
         </div>
         {completedCount === totalCount && (
           <p className="text-xs text-brand-600 mt-2 text-center">
-            <i className="bi bi-check-circle-fill" /> ما شاء الله — أتممت وردك اليوم
+            <i className="bi bi-check-circle-fill" /> {t('adhkar_completed_today')}
           </p>
         )}
       </div>
@@ -80,11 +78,10 @@ export default function Adhkar() {
                 </span>
               )}
 
-              {/* الجزء القابل للضغط — القراءة الحرة */}
               <button
                 onClick={() => openFree(cat.slug)}
                 className="flex items-start gap-3 text-right w-full group"
-                aria-label={`اقرأ ${cat.title}`}
+                aria-label={cat.title}
               >
                 <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center shrink-0 group-hover:bg-brand-100 dark:group-hover:bg-brand-900/50 transition">
                   <i className={`bi ${cat.icon} text-2xl text-brand-600`} />
@@ -97,31 +94,30 @@ export default function Adhkar() {
                     {cat.description}
                   </p>
                   <p className="text-[10px] text-brand-600 mt-2">
-                    <i className="bi bi-list-check" /> {cat.adhkar.length} ذكر ·{' '}
-                    <span className="group-hover:underline">اضغط للقراءة</span>
+                    <i className="bi bi-list-check" /> {cat.adhkar.length} {t('dhikr_count')} ·{' '}
+                    <span className="group-hover:underline">{t('adhkar_tap_to_read')}</span>
                   </p>
                 </div>
               </button>
 
-              {/* أزرار منفصلة */}
               <div className="grid grid-cols-2 gap-2 mt-auto pt-2 border-t border-[var(--border)]">
                 <button
                   onClick={() => openFree(cat.slug)}
                   className="py-2 rounded-lg border border-[var(--border)] text-xs font-semibold hover:bg-[var(--bg)] transition flex items-center justify-center gap-1"
                 >
-                  <i className="bi bi-book" /> اقرأ
+                  <i className="bi bi-book" /> {t('read')}
                 </button>
                 <button
                   onClick={() => openChallenge(cat.slug)}
                   className="py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold hover:bg-brand-700 transition flex items-center justify-center gap-1"
                 >
-                  <i className="bi bi-bullseye" /> ابدأ
+                  <i className="bi bi-bullseye" /> {t('start')}
                 </button>
               </div>
             </div>
           );
         })}
       </div>
-    </div>  
+    </div>
   );
 }

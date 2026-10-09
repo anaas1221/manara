@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { ADHKAR_CATEGORIES } from '../content/adhkar';
 import { ls } from '../lib/storage';
 
@@ -11,6 +12,7 @@ interface TodayProgress {
 type Mode = 'setup' | 'session' | 'done';
 
 export default function AdhkarSession() {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -19,14 +21,12 @@ export default function AdhkarSession() {
   const total = category?.adhkar.length ?? 0;
   const wantsSetup = searchParams.get('setup') === '1';
 
-  // لو مش طالب setup → ابدأ الجلسة مباشرة بكل الأذكار
   const [mode, setMode] = useState<Mode>(wantsSetup ? 'setup' : 'session');
   const [from, setFrom] = useState(1);
   const [to, setTo] = useState(total);
   const [i, setI] = useState(0);
   const [count, setCount] = useState(0);
 
-  // إعادة التهيئة عند تغيير الفئة أو الـ query
   useEffect(() => {
     setMode(wantsSetup ? 'setup' : 'session');
     setFrom(1);
@@ -35,12 +35,10 @@ export default function AdhkarSession() {
     setCount(0);
   }, [slug, total, wantsSetup]);
 
-  // إعادة التوجيه لو الفئة غير موجودة
   useEffect(() => {
     if (!category) navigate('/adhkar');
   }, [category, navigate]);
 
-  // حفظ عند الانتهاء
   useEffect(() => {
     if (mode !== 'done' || !category) return;
     const today = new Date().toISOString().slice(0, 10);
@@ -52,9 +50,7 @@ export default function AdhkarSession() {
 
   if (!category) return null;
 
-  // =====================================
-  // 1. شاشة الإعداد — تحديد الهدف
-  // =====================================
+  // ═══ 1. شاشة الإعداد ═══
   if (mode === 'setup') {
     const selectedCount = to - from + 1;
     const isValid = from >= 1 && to <= total && from <= to;
@@ -65,7 +61,7 @@ export default function AdhkarSession() {
           to="/adhkar"
           className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-brand-600"
         >
-          <i className="bi bi-arrow-right" /> العودة لقائمة الأذكار
+          <i className="bi bi-arrow-right" /> {t('adhkar_back_to_list')}
         </Link>
 
         <div className="card p-6 space-y-5">
@@ -80,14 +76,11 @@ export default function AdhkarSession() {
           <div className="border-t border-[var(--border)] pt-5 space-y-4">
             <div>
               <h2 className="font-semibold mb-1">
-                <i className="bi bi-bullseye text-brand-600" /> حدد هدفك
+                <i className="bi bi-bullseye text-brand-600" /> {t('adhkar_target')}
               </h2>
-              <p className="text-xs text-[var(--muted)]">
-                اختر من أي ذكر تريد البدء، وإلى أي ذكر تريد الانتهاء.
-              </p>
+              <p className="text-xs text-[var(--muted)]">{t('adhkar_target_hint')}</p>
             </div>
 
-            {/* اختيار سريع */}
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => { setFrom(1); setTo(total); }}
@@ -97,7 +90,7 @@ export default function AdhkarSession() {
                     : 'border-[var(--border)] hover:border-brand-500'
                 }`}
               >
-                <i className="bi bi-check2-all" /> الكل ({total})
+                <i className="bi bi-check2-all" /> {t('adhkar_all')} ({total})
               </button>
               <button
                 onClick={() => { setFrom(1); setTo(Math.ceil(total / 2)); }}
@@ -107,7 +100,7 @@ export default function AdhkarSession() {
                     : 'border-[var(--border)] hover:border-brand-500'
                 }`}
               >
-                النصف ({Math.ceil(total / 2)})
+                {t('adhkar_half')} ({Math.ceil(total / 2)})
               </button>
               <button
                 onClick={() => {
@@ -116,16 +109,13 @@ export default function AdhkarSession() {
                 }}
                 className="px-3 py-1.5 rounded-full border border-[var(--border)] text-sm hover:border-brand-500 transition"
               >
-                5 أذكار
+                {t('adhkar_five')}
               </button>
             </div>
 
-            {/* اختيار مخصص */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs text-[var(--muted)] mb-1">
-                  من الذكر رقم
-                </label>
+                <label className="block text-xs text-[var(--muted)] mb-1">{t('adhkar_from')}</label>
                 <select
                   value={from}
                   onChange={e => {
@@ -137,16 +127,14 @@ export default function AdhkarSession() {
                 >
                   {category.adhkar.map((_, idx) => (
                     <option key={idx + 1} value={idx + 1}>
-                      الذكر {idx + 1}
+                      {t('dhikr_count')} {idx + 1}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--muted)] mb-1">
-                  إلى الذكر رقم
-                </label>
+                <label className="block text-xs text-[var(--muted)] mb-1">{t('adhkar_to')}</label>
                 <select
                   value={to}
                   onChange={e => {
@@ -158,39 +146,37 @@ export default function AdhkarSession() {
                 >
                   {category.adhkar.map((_, idx) => (
                     <option key={idx + 1} value={idx + 1}>
-                      الذكر {idx + 1}
+                      {t('dhikr_count')} {idx + 1}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
 
-            {/* ملخص الهدف */}
             <div className="card p-4 bg-brand-50/40 dark:bg-brand-900/10 border-brand-500/30">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-[var(--muted)]">
-                  <i className="bi bi-list-check" /> الهدف المحدد
+                  <i className="bi bi-list-check" /> {t('adhkar_selected_target')}
                 </span>
                 <span className="font-bold text-brand-600">
-                  {isValid ? `${selectedCount} من ${total} ذكر` : '—'}
+                  {isValid ? `${selectedCount} / ${total}` : '—'}
                 </span>
               </div>
               {isValid && (
                 <p className="text-xs text-[var(--muted)] mt-1">
-                  من الذكر {from} إلى الذكر {to}
+                  {from} → {to}
                 </p>
               )}
             </div>
           </div>
         </div>
 
-        {/* أزرار Submit / Cancel */}
         <div className="flex gap-3">
           <button
             onClick={() => navigate('/adhkar')}
             className="flex-1 py-3 rounded-xl border border-[var(--border)] font-semibold hover:bg-[var(--card)] transition"
           >
-            <i className="bi bi-x-lg" /> إلغاء
+            <i className="bi bi-x-lg" /> {t('cancel')}
           </button>
           <button
             onClick={() => {
@@ -202,20 +188,16 @@ export default function AdhkarSession() {
             disabled={!isValid}
             className="flex-[2] py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition disabled:opacity-40"
           >
-            <i className="bi bi-play-fill" /> ابدأ الجلسة
+            <i className="bi bi-play-fill" /> {t('adhkar_start_session')}
           </button>
         </div>
       </div>
     );
   }
 
-  // =====================================
-  // 2. شاشة الجلسة
-  // =====================================
-  const selectedItems = category.adhkar.slice(from - 1, to);
-  const items = selectedItems;
+  // ═══ 2. شاشة الجلسة ═══
+  const items = category.adhkar.slice(from - 1, to);
 
-  // انتقلنا لشاشة النجاح
   if (mode === 'session' && i >= items.length) {
     setTimeout(() => setMode('done'), 0);
   }
@@ -251,31 +233,25 @@ export default function AdhkarSession() {
 
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* زر الرجوع */}
         <button
           onClick={() => {
-            if (confirm('هل تريد إلغاء الجلسة؟ سيتم فقدان تقدمك.')) {
+            if (confirm(t('adhkar_cancel_confirm'))) {
               navigate('/adhkar');
             }
           }}
           className="inline-flex items-center gap-2 text-sm text-[var(--muted)] hover:text-brand-600"
         >
-          <i className="bi bi-arrow-right" />
-          إلغاء الجلسة
+          <i className="bi bi-arrow-right" /> {t('adhkar_cancel_session')}
         </button>
 
-        {/* المعلومات العلوية */}
         <div className="flex items-center justify-between text-sm text-[var(--muted)]">
           <span className="flex items-center gap-1">
             <i className={`bi ${category.icon}`} />
             {category.title}
           </span>
-          <span>
-            الذكر {from + i} من {to} (الهدف: {items.length})
-          </span>
+          <span>{t('adhkar_dhikr_of', { n: from + i, total: to })}</span>
         </div>
 
-        {/* شريط التقدم */}
         <div className="h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
           <div
             className="h-full bg-brand-600 transition-all duration-300"
@@ -283,24 +259,20 @@ export default function AdhkarSession() {
           />
         </div>
 
-        {/* نص الذكر */}
         <div className="card p-6 leading-loose text-lg font-quran text-center min-h-[180px] flex items-center justify-center">
           {current.text}
         </div>
 
-        {/* الفضل */}
         {current.virtue && (
           <div className="text-xs text-brand-600 text-center px-2">
             <i className="bi bi-star-fill" /> {current.virtue}
           </div>
         )}
 
-        {/* المصدر */}
         <div className="text-center text-xs text-[var(--muted)]">
           <i className="bi bi-bookmark" /> {current.source}
         </div>
 
-        {/* زر العد */}
         <button
           onClick={increment}
           disabled={isCountDone}
@@ -312,21 +284,20 @@ export default function AdhkarSession() {
         >
           {isCountDone ? (
             <span className="text-2xl">
-              <i className="bi bi-check-circle-fill" /> تم
+              <i className="bi bi-check-circle-fill" /> {t('adhkar_done')}
             </span>
           ) : (
             <span>{count} / {current.repeat}</span>
           )}
         </button>
 
-        {/* أزرار التنقل */}
         <div className="flex gap-2">
           <button
             onClick={prev}
             disabled={i === 0}
             className="flex-1 py-3 rounded-xl border border-[var(--border)] disabled:opacity-40 hover:enabled:bg-[var(--card)]"
           >
-            <i className="bi bi-chevron-right" /> السابق
+            <i className="bi bi-chevron-right" /> {t('adhkar_prev')}
           </button>
           <button
             onClick={next}
@@ -334,31 +305,29 @@ export default function AdhkarSession() {
             className="flex-1 py-3 rounded-xl bg-brand-600 text-white disabled:opacity-40 hover:enabled:bg-brand-700 font-semibold"
           >
             {i === items.length - 1 ? (
-              <><i className="bi bi-check2-all" /> إنهاء الجلسة</>
+              <><i className="bi bi-check2-all" /> {t('adhkar_finish')}</>
             ) : (
-              <>التالي <i className="bi bi-chevron-left" /></>
+              <>{t('adhkar_next')} <i className="bi bi-chevron-left" /></>
             )}
           </button>
         </div>
 
-        <p className="text-center text-xs text-[var(--muted)]">
-          اضغط على الزر الأخضر لعدّ الذكر — سيُحفظ تقدمك اليومي تلقائيًا.
-        </p>
+        <p className="text-center text-xs text-[var(--muted)]">{t('adhkar_tap_hint')}</p>
       </div>
     );
   }
 
-  // =====================================
-  // 3. شاشة النجاح
-  // =====================================
+  // ═══ 3. شاشة النجاح ═══
   return (
     <div className="max-w-md mx-auto card p-8 text-center space-y-4">
       <div className="w-20 h-20 mx-auto rounded-full bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center">
         <i className="bi bi-check-circle-fill text-5xl text-brand-600" />
       </div>
-      <h2 className="text-2xl font-bold">تمت جلسة {category.title}</h2>
+      <h2 className="text-2xl font-bold">
+        {t('adhkar_session_of', { title: category.title })}
+      </h2>
       <p className="text-[var(--muted)]">
-        أتممت {items.length} من الأذكار — تقبّل الله منك.
+        {t('adhkar_completed_all', { count: items.length })}
       </p>
 
       <div className="pt-4 space-y-2">
@@ -370,13 +339,13 @@ export default function AdhkarSession() {
           }}
           className="block w-full py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition"
         >
-          <i className="bi bi-bullseye" /> جلسة جديدة
+          <i className="bi bi-bullseye" /> {t('adhkar_new_session')}
         </button>
         <Link
           to="/adhkar"
           className="block w-full py-3 rounded-xl border border-[var(--border)] text-sm hover:bg-[var(--card)]"
         >
-          <i className="bi bi-arrow-right" /> العودة لقائمة الأذكار
+          <i className="bi bi-arrow-right" /> {t('adhkar_back_to_list')}
         </Link>
       </div>
     </div>

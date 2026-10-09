@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LEARNING_PATHS, TOTAL_LESSONS } from '../content/learn-paths';
 import { useLearningProgress } from '../lib/hooks/useLearningProgress';
 
 export default function MyJourney() {
+  const { t } = useTranslation();
   const {
     progress,
     completedCount,
@@ -14,41 +16,36 @@ export default function MyJourney() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* ✅ زر الرجوع — واضح */}
       <div className="flex items-center justify-between">
         <Link
           to="/"
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-sm hover:bg-[var(--card)] transition"
         >
-          <i className="bi bi-house" /> الرئيسية
+          <i className="bi bi-house" /> {t('lesson_home')}
         </Link>
         <Link
           to="/learn"
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-sm hover:bg-[var(--card)] transition"
         >
-          <i className="bi bi-mortarboard" /> المسارات
+          <i className="bi bi-mortarboard" /> {t('journey_paths_label')}
         </Link>
       </div>
 
-      {/* Header */}
       <div className="text-center space-y-2 py-4">
         <div className="w-20 h-20 mx-auto rounded-full bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center">
           <i className={`bi ${isComplete ? 'bi-trophy-fill' : 'bi-signpost-2'} text-4xl text-brand-600`} />
         </div>
         <h1 className="text-3xl font-bold">
-          {isComplete ? 'ما شاء الله!' : 'رحلتك مع منارة'}
+          {isComplete ? t('journey_complete_title') : t('journey_title')}
         </h1>
         <p className="text-sm text-[var(--muted)]">
-          {isComplete
-            ? 'أكملت كل الدروس — تقبّل الله منك'
-            : 'تابع خطوة بخطوة، فالقليل الدائم خير من الكثير المنقطع'}
+          {isComplete ? t('journey_complete_subtitle') : t('journey_subtitle')}
         </p>
       </div>
 
-      {/* Progress Card */}
       <div className="card p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-bold">تقدمك</h2>
+          <h2 className="font-bold">{t('journey_progress')}</h2>
           <span className="text-2xl font-bold text-brand-600">{Math.round(progressPercent)}%</span>
         </div>
 
@@ -62,20 +59,19 @@ export default function MyJourney() {
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="card p-3 bg-[var(--bg)]">
             <div className="text-2xl font-bold text-brand-600">{completedCount}</div>
-            <div className="text-xs text-[var(--muted)] mt-1">درس مكتمل</div>
+            <div className="text-xs text-[var(--muted)] mt-1">{t('journey_lessons_completed')}</div>
           </div>
           <div className="card p-3 bg-[var(--bg)]">
             <div className="text-2xl font-bold">{TOTAL_LESSONS - completedCount}</div>
-            <div className="text-xs text-[var(--muted)] mt-1">درس متبقي</div>
+            <div className="text-xs text-[var(--muted)] mt-1">{t('journey_lessons_remaining')}</div>
           </div>
           <div className="card p-3 bg-[var(--bg)]">
             <div className="text-2xl font-bold">{TOTAL_LESSONS}</div>
-            <div className="text-xs text-[var(--muted)] mt-1">إجمالي الدروس</div>
+            <div className="text-xs text-[var(--muted)] mt-1">{t('journey_lessons_total')}</div>
           </div>
         </div>
       </div>
 
-      {/* Next Lesson */}
       {!isComplete && nextLesson && (
         <div className="card p-6 border-brand-500/40 bg-gradient-to-l from-brand-50/50 dark:from-brand-900/10 to-transparent">
           <div className="flex items-start gap-4">
@@ -83,11 +79,11 @@ export default function MyJourney() {
               <i className="bi bi-play-fill text-3xl" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-brand-600 font-semibold mb-1">خطوتك التالية</div>
+              <div className="text-xs text-brand-600 font-semibold mb-1">{t('journey_next_step')}</div>
               <h3 className="font-bold text-lg leading-tight">{nextLesson.title}</h3>
               <p className="text-sm text-[var(--muted)] mt-1">{nextLesson.description}</p>
               <p className="text-xs text-[var(--muted)] mt-2">
-                <i className="bi bi-clock" /> {nextLesson.estimatedMinutes} دقائق
+                <i className="bi bi-clock" /> {t('journey_minutes_short', { n: nextLesson.estimatedMinutes })}
               </p>
             </div>
           </div>
@@ -95,35 +91,33 @@ export default function MyJourney() {
             to={`/learn/lesson/${nextLesson.id}`}
             className="mt-4 w-full py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition flex items-center justify-center gap-2"
           >
-            ابدأ الدرس الآن <i className="bi bi-arrow-left" />
+            {t('journey_start_now')} <i className="bi bi-arrow-left" />
           </Link>
         </div>
       )}
 
-      {/* Message when complete */}
       {isComplete && (
         <div className="card p-6 text-center space-y-3 bg-gradient-to-l from-green-50/50 dark:from-green-900/10 to-transparent border-green-500/30">
           <i className="bi bi-trophy-fill text-5xl text-green-600" />
-          <h3 className="text-xl font-bold">أكملت كل الدروس 🎉</h3>
+          <h3 className="text-xl font-bold">{t('journey_all_done')}</h3>
           <p className="text-sm text-[var(--muted)]">
-            ما شاء الله! الآن يمكنك:<br />
-            • مراجعة الدروس التي تريدها<br />
-            • العودة للمحتوى للاستزادة<br />
-            • البدء في تطبيق ما تعلمته
+            {t('journey_all_done_hint')}<br />
+            {t('journey_all_done_bullet1')}<br />
+            {t('journey_all_done_bullet2')}<br />
+            {t('journey_all_done_bullet3')}
           </p>
           <Link
             to="/learn"
             className="inline-block px-6 py-3 rounded-xl bg-brand-600 text-white font-semibold"
           >
-            عرض كل المسارات
+            {t('journey_view_all_paths')}
           </Link>
         </div>
       )}
 
-      {/* المسارات */}
       <div className="space-y-4">
         <h2 className="text-lg font-bold flex items-center gap-2">
-          <i className="bi bi-signpost-2 text-brand-600" /> المسارات
+          <i className="bi bi-signpost-2 text-brand-600" /> {t('journey_paths')}
         </h2>
         {LEARNING_PATHS.map(path => {
           const pathCompleted = path.lessons.filter(l =>
@@ -147,7 +141,7 @@ export default function MyJourney() {
                     <h3 className="font-bold leading-tight">{path.title}</h3>
                     {pathDone && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-700 dark:text-green-300 font-semibold">
-                        مكتمل
+                        {t('learn_completed_label')}
                       </span>
                     )}
                   </div>
@@ -184,7 +178,9 @@ export default function MyJourney() {
                       <span className={`flex-1 text-sm ${done ? 'text-[var(--muted)] line-through' : ''}`}>
                         {lesson.title}
                       </span>
-                      <span className="text-[10px] text-[var(--muted)]">{lesson.estimatedMinutes} د</span>
+                      <span className="text-[10px] text-[var(--muted)]">
+                        {t('journey_minutes_short', { n: lesson.estimatedMinutes })}
+                      </span>
                     </Link>
                   );
                 })}
@@ -194,29 +190,27 @@ export default function MyJourney() {
         })}
       </div>
 
-      {/* Reset */}
       {completedCount > 0 && (
         <div className="card p-5">
           <button
             onClick={() => {
-              if (confirm('سيتم حذف كل تقدمك في الدروس. متابعة؟')) {
+              if (confirm(t('journey_reset_confirm'))) {
                 resetProgress();
               }
             }}
             className="text-sm text-red-600 hover:underline"
           >
-            <i className="bi bi-arrow-counterclockwise" /> إعادة تعيين كل التقدم
+            <i className="bi bi-arrow-counterclockwise" /> {t('journey_reset')}
           </button>
         </div>
       )}
 
-      {/* ✅ زر رئيسي للرجوع في الأسفل */}
       <div className="pt-4 pb-6">
         <Link
           to="/"
           className="w-full py-3 rounded-xl bg-brand-600 text-white font-semibold hover:bg-brand-700 transition flex items-center justify-center gap-2"
         >
-          <i className="bi bi-house" /> العودة ل    لرئيسية
+          <i className="bi bi-house" /> {t('journey_back_home')}
         </Link>
       </div>
     </div>
