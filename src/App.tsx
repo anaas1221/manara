@@ -14,7 +14,6 @@ import Mosques from './pages/Mosques';
 import Tasbeeh from './pages/Tasbeeh';
 import Names from './pages/Names';
 import Hajj from './pages/Hajj';
-import Library from './pages/Library';
 import Learn from './pages/Learn';
 import LessonView from './pages/LessonView';
 import MyJourney from './pages/MyJourney';
@@ -38,7 +37,6 @@ export default function App() {
             <Route path="/tasbeeh" element={<Tasbeeh />} />
             <Route path="/names" element={<Names />} />
             <Route path="/hajj" element={<Hajj />} />
-            <Route path="/library" element={<Library />} />
             <Route path="/learn" element={<Learn />} />
             <Route path="/learn/lesson/:id" element={<LessonView />} />
             <Route path="/my-journey" element={<MyJourney />} />

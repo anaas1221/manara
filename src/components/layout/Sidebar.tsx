@@ -18,7 +18,6 @@ export function Sidebar() {
     { path: '/tasbeeh', label: t('nav_tasbeeh'),  icon: 'bi-circle' },
     { path: '/names',   label: t('nav_names'),    icon: 'bi-stars' },
     { path: '/hajj',    label: t('nav_hajj'),     icon: 'bi-signpost' },
-    { path: '/library', label: t('nav_library'),  icon: 'bi-collection' },
   ];
 
   const LEARNING_NAV = [

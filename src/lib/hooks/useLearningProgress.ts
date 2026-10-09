@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import { db } from '../db';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { getAllLessons, TOTAL_LESSONS } from '../../content/learn-paths';
 
 export interface LearningProgress {
@@ -20,71 +19,76 @@ export function useLearningProgress() {
   const [progress, setProgress] = useState<LearningProgress>(DEFAULT_PROGRESS);
   const [loading, setLoading] = useState(true);
 
-  // قراءة من localStorage
+  // قراءة من localStorage — مرة واحدة فقط
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
-        setProgress(JSON.parse(stored));
+        const parsed = JSON.parse(stored);
+        if (parsed && Array.isArray(parsed.completedLessons)) {
+          setProgress(parsed);
+        }
       }
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
 
-  // حفظ في localStorage عند التغيير
-  const save = (next: LearningProgress) => {
-    setProgress(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch { /* ignore */ }
-  };
-
-  const markLessonComplete = (lessonId: string) => {
-    const next: LearningProgress = {
-      ...progress,
-      completedLessons: progress.completedLessons.includes(lessonId)
-        ? progress.completedLessons
-        : [...progress.completedLessons, lessonId],
-      lastLessonId: lessonId,
-      startedAt: progress.startedAt ?? new Date().toISOString(),
-    };
-    save(next);
-  };
-
-  const markLessonIncomplete = (lessonId: string) => {
-    const next: LearningProgress = {
-      ...progress,
-      completedLessons: progress.completedLessons.filter(id => id !== lessonId),
-    };
-    save(next);
-  };
-
-  const setLastLesson = (lessonId: string) => {
-    save({
-      ...progress,
-      lastLessonId: lessonId,
-      startedAt: progress.startedAt ?? new Date().toISOString(),
+  // ✅ دوال memoized — مش بتتعمل من جديد كل render
+  const markLessonComplete = useCallback((lessonId: string) => {
+    setProgress(prev => {
+      const next: LearningProgress = {
+        ...prev,
+        completedLessons: prev.completedLessons.includes(lessonId)
+          ? prev.completedLessons
+          : [...prev.completedLessons, lessonId],
+        lastLessonId: lessonId,
+        startedAt: prev.startedAt ?? new Date().toISOString(),
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
     });
-  };
+  }, []);
 
-  const resetProgress = () => {
-    save(DEFAULT_PROGRESS);
-  };
+  const markLessonIncomplete = useCallback((lessonId: string) => {
+    setProgress(prev => {
+      const next: LearningProgress = {
+        ...prev,
+        completedLessons: prev.completedLessons.filter(id => id !== lessonId),
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
-  // حسابات
-  const allLessons = getAllLessons();
+  const setLastLesson = useCallback((lessonId: string) => {
+    setProgress(prev => {
+      // ✅ لو هو هو نفس الدرس، ما نعملش re-render
+      if (prev.lastLessonId === lessonId) return prev;
+      const next: LearningProgress = {
+        ...prev,
+        lastLessonId: lessonId,
+        startedAt: prev.startedAt ?? new Date().toISOString(),
+      };
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
+
+  const resetProgress = useCallback(() => {
+    setProgress(DEFAULT_PROGRESS);
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+  }, []);
+
+  // ✅ الحسابات memoized
   const completedCount = progress.completedLessons.length;
   const progressPercent = TOTAL_LESSONS > 0 ? (completedCount / TOTAL_LESSONS) * 100 : 0;
   const isComplete = completedCount >= TOTAL_LESSONS;
 
-  // الدرس التالي المقترح
-  const getNextLesson = () => {
-    // 1. لو فيه درس لم يكتمل آخر واحد
-    const firstUncompleted = allLessons.find(
-      l => !progress.completedLessons.includes(l.id)
-    );
-    return firstUncompleted ?? null;
-  };
+  const allLessons = useMemo(() => getAllLessons(), []);
+
+  const nextLesson = useMemo(() => {
+    return allLessons.find(l => !progress.completedLessons.includes(l.id)) ?? null;
+  }, [allLessons, progress.completedLessons]);
 
   return {
     progress,
@@ -97,7 +101,7 @@ export function useLearningProgress() {
     totalLessons: TOTAL_LESSONS,
     progressPercent,
     isComplete,
-    nextLesson: getNextLesson(),
+    nextLesson,
     allLessons,
   };
 }

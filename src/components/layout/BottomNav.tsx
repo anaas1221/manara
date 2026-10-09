@@ -18,7 +18,6 @@ const MORE_ITEMS = [
   { path: '/tasbeeh',    label: 'السبحة',      icon: 'bi-circle' },
   { path: '/names',      label: 'أسماء الله',  icon: 'bi-stars' },
   { path: '/hajj',       label: 'الحج والعمرة', icon: 'bi-signpost' },
-  { path: '/library',    label: 'المكتبة',     icon: 'bi-collection' },
   { path: '/settings',   label: 'الإعدادات',   icon: 'bi-gear' },
 ];
 
@@ -65,7 +64,6 @@ export function BottomNav() {
         </ul>
       </nav>
 
-      {/* Drawer مع كل الأقسام */}
       {drawerOpen && (
         <>
           <div
@@ -93,9 +91,7 @@ export function BottomNav() {
                       to={it.path}
                       onClick={() => setDrawerOpen(false)}
                       className={`flex flex-col items-center gap-2 p-3 rounded-xl transition text-xs ${
-                        active
-                          ? 'bg-brand-600 text-white'
-                          : 'hover:bg-[var(--bg)]'
+                        active ? 'bg-brand-600 text-white' : 'hover:bg-[var(--bg)]'
                       }`}
                     >
                       <i className={`bi ${it.icon} text-2xl`} />

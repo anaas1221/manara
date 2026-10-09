@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { findLesson, getAllLessons } from '../content/learn-paths';
 import { useLearningProgress } from '../lib/hooks/useLearningProgress';
@@ -9,14 +9,22 @@ export default function LessonView() {
   const { markLessonComplete, markLessonIncomplete, progress, setLastLesson } = useLearningProgress();
   const [toast, setToast] = useState<string | null>(null);
 
+  // ✅ نمنع التكرار
+  const lastTrackedRef = useRef<string | null>(null);
+
   const result = id ? findLesson(id) : null;
   const lesson = result?.lesson;
   const path = result?.path;
 
- useEffect(() => {
-  if (lesson) setLastLesson(lesson.id);
-  window.scrollTo(0, 0);
-}, [lesson, setLastLesson]);
+  // ✅ حفظ آخر درس — مرة واحدة فقط لكل درس
+  useEffect(() => {
+    if (!lesson) return;
+    if (lastTrackedRef.current === lesson.id) return;
+    lastTrackedRef.current = lesson.id;
+    setLastLesson(lesson.id);
+    // scroll للأعلى
+    window.scrollTo(0, 0);
+  }, [lesson?.id, setLastLesson]);
 
   if (!lesson || !path) {
     return (
@@ -32,7 +40,6 @@ export default function LessonView() {
 
   const isCompleted = progress.completedLessons.includes(lesson.id);
 
-  // الدرس التالي
   const allLessons = getAllLessons();
   const currentIdx = allLessons.findIndex(l => l.id === lesson.id);
   const nextLesson = currentIdx >= 0 && currentIdx < allLessons.length - 1
@@ -62,21 +69,22 @@ export default function LessonView() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-           {/* رجوع + Breadcrumb */}
-      <div className="flex items-center justify-between">
+      {/* رجوع + Breadcrumb */}
+      <div className="flex items-center justify-between gap-2">
         <Link
           to="/learn"
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-sm hover:bg-[var(--card)] transition"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-xs sm:text-sm hover:bg-[var(--card)] transition"
         >
           <i className="bi bi-arrow-right" /> العودة للمسارات
         </Link>
         <Link
           to="/"
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-sm hover:bg-[var(--card)] transition"
+          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--border)] text-xs sm:text-sm hover:bg-[var(--card)] transition"
         >
           <i className="bi bi-house" /> الرئيسية
         </Link>
       </div>
+
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
@@ -185,7 +193,7 @@ export default function LessonView() {
             to={`/learn/lesson/${prevLesson.id}`}
             className="flex-1 py-3 rounded-xl border border-[var(--border)] text-sm hover:bg-[var(--card)] flex items-center justify-center gap-2"
           >
-            <i className="bi bi-chevron-right" /> الدرس السابق
+            <i className="bi bi-chevron-right" /> السابق
           </Link>
         ) : (
           <div className="flex-1" />
@@ -195,7 +203,7 @@ export default function LessonView() {
             onClick={handleNext}
             className="flex-1 py-3 rounded-xl bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 flex items-center justify-center gap-2"
           >
-            الدرس التالي <i className="bi bi-chevron-left" />
+            التالي <i className="bi bi-chevron-left" />
           </button>
         ) : (
           <Link
