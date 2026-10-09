@@ -10,22 +10,22 @@ interface Lang {
 }
 
 const LANGS: Lang[] = [
-  { code: 'ar', name: 'Arabic',      nativeName: 'العربية',    flag: '🇸🇦', rtl: true },
-  { code: 'en', name: 'English',     nativeName: 'English',    flag: '🇬🇧' },
-  { code: 'fr', name: 'French',      nativeName: 'Français',   flag: '🇫🇷' },
-  { code: 'tr', name: 'Turkish',     nativeName: 'Türkçe',     flag: '🇹🇷' },
-  { code: 'ur', name: 'Urdu',        nativeName: 'اردو',       flag: '🇵🇰', rtl: true },
-  { code: 'id', name: 'Indonesian',  nativeName: 'Indonesia',  flag: '🇮🇩' },
-  { code: 'bn', name: 'Bengali',     nativeName: 'বাংলা',       flag: '🇧🇩' },
-  { code: 'fa', name: 'Persian',     nativeName: 'فارسی',      flag: '🇮🇷', rtl: true },
-  { code: 'es', name: 'Spanish',     nativeName: 'Español',    flag: '🇪🇸' },
-  { code: 'de', name: 'German',      nativeName: 'Deutsch',    flag: '🇩🇪' },
-  { code: 'ru', name: 'Russian',     nativeName: 'Русский',    flag: '🇷🇺' },
-  { code: 'hi', name: 'Hindi',       nativeName: 'हिन्दी',      flag: '🇮🇳' },
-  { code: 'ms', name: 'Malay',       nativeName: 'Melayu',     flag: '🇲🇾' },
-  { code: 'zh', name: 'Chinese',     nativeName: '中文',        flag: '🇨🇳' },
-  { code: 'sw', name: 'Swahili',     nativeName: 'Kiswahili',  flag: '🇰🇪' },
-  { code: 'pt', name: 'Portuguese',  nativeName: 'Português',  flag: '🇵🇹' },
+  { code: 'ar', name: 'Arabic',     nativeName: 'العربية',    flag: '🇸🇦', rtl: true },
+  { code: 'en', name: 'English',    nativeName: 'English',    flag: '🇬🇧' },
+  { code: 'fr', name: 'French',     nativeName: 'Français',   flag: '🇫🇷' },
+  { code: 'tr', name: 'Turkish',    nativeName: 'Türkçe',     flag: '🇹🇷' },
+  { code: 'ur', name: 'Urdu',       nativeName: 'اردو',       flag: '🇵🇰', rtl: true },
+  { code: 'id', name: 'Indonesian', nativeName: 'Indonesia',  flag: '🇮🇩' },
+  { code: 'bn', name: 'Bengali',    nativeName: 'বাংলা',       flag: '🇧🇩' },
+  { code: 'fa', name: 'Persian',    nativeName: 'فارسی',      flag: '🇮🇷', rtl: true },
+  { code: 'es', name: 'Spanish',    nativeName: 'Español',    flag: '🇪🇸' },
+  { code: 'de', name: 'German',     nativeName: 'Deutsch',    flag: '🇩🇪' },
+  { code: 'ru', name: 'Russian',    nativeName: 'Русский',    flag: '🇷🇺' },
+  { code: 'hi', name: 'Hindi',      nativeName: 'हिन्दी',      flag: '🇮🇳' },
+  { code: 'ms', name: 'Malay',      nativeName: 'Melayu',     flag: '🇲🇾' },
+  { code: 'zh', name: 'Chinese',    nativeName: '中文',        flag: '🇨🇳' },
+  { code: 'sw', name: 'Swahili',    nativeName: 'Kiswahili',  flag: '🇰🇪' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português',  flag: '🇵🇹' },
 ];
 
 export function LanguageSwitcher() {
@@ -63,7 +63,6 @@ export function LanguageSwitcher() {
 
   return (
     <div ref={ref} className="relative">
-      {/* زر الفتح */}
       <button
         onClick={() => setOpen(!open)}
         className="p-2 rounded-lg hover:bg-[var(--card)] flex items-center gap-1 transition"
@@ -74,10 +73,8 @@ export function LanguageSwitcher() {
         <i className={`bi bi-chevron-down text-[10px] transition ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* القائمة المنسدلة */}
       {open && (
         <div className="absolute top-full right-0 mt-1 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-2xl z-50 w-72 overflow-hidden">
-          {/* بحث */}
           <div className="p-2 border-b border-[var(--border)]">
             <div className="relative">
               <i className="bi bi-search absolute right-3 top-1/2 -translate-y-1/2 text-xs text-[var(--muted)]" />
@@ -85,17 +82,18 @@ export function LanguageSwitcher() {
                 type="text"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                placeholder="ابحث عن لغة..."
+                placeholder="Search languages..."
                 className="w-full pr-8 pl-3 py-2 rounded-lg bg-[var(--bg)] text-xs outline-none focus:ring-1 focus:ring-brand-500"
                 autoFocus
               />
             </div>
           </div>
 
-          {/* قائمة اللغات */}
           <div className="max-h-80 overflow-y-auto py-1">
             {filteredLangs.length === 0 ? (
-              <p className="text-center text-xs text-[var(--muted)] py-4">لا توجد نتائج</p>
+              <p className="text-center text-xs text-[var(--muted)] py-4">
+                No results
+              </p>
             ) : (
               filteredLangs.map(lang => {
                 const isActive = i18n.language.split('-')[0] === lang.code;
@@ -116,9 +114,7 @@ export function LanguageSwitcher() {
                         {lang.name}
                       </div>
                     </div>
-                    {isActive && (
-                      <i className="bi bi-check-lg text-brand-600 text-base shrink-0" />
-                    )}
+                    {isActive && <i className="bi bi-check-lg text-brand-600 text-base shrink-0" />}
                     {lang.rtl && !isActive && (
                       <span className="text-[9px] text-[var(--muted)] px-1.5 py-0.5 rounded bg-[var(--bg)] shrink-0">
                         RTL
@@ -130,10 +126,9 @@ export function LanguageSwitcher() {
             )}
           </div>
 
-          {/* Footer */}
           <div className="border-t border-[var(--border)] p-2 text-center">
             <span className="text-[10px] text-[var(--muted)]">
-              {LANGS.length} لغة متاحة
+              {LANGS.length} languages
             </span>
           </div>
         </div>
