@@ -16,6 +16,8 @@ import Names from './pages/Names';
 import Hajj from './pages/Hajj';
 import Library from './pages/Library';
 import Learn from './pages/Learn';
+import LessonView from './pages/LessonView';
+import MyJourney from './pages/MyJourney';
 import Settings from './pages/Settings';
 
 export default function App() {
@@ -38,6 +40,8 @@ export default function App() {
             <Route path="/hajj" element={<Hajj />} />
             <Route path="/library" element={<Library />} />
             <Route path="/learn" element={<Learn />} />
+            <Route path="/learn/lesson/:id" element={<LessonView />} />
+            <Route path="/my-journey" element={<MyJourney />} />
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </Shell>

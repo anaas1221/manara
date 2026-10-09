@@ -9,7 +9,6 @@ const PRAYER_LABELS: Record<string, string> = {
   Asr: 'العصر', Maghrib: 'المغرب', Isha: 'العشاء'
 };
 
-// ✅ أسماء السور (مطابقة للـ Quran.tsx)
 const SURAH_NAMES: Record<number, string> = {
   1: 'الفاتحة', 2: 'البقرة', 3: 'آل عمران', 4: 'النساء', 5: 'المائدة',
   6: 'الأنعام', 7: 'الأعراف', 8: 'الأنفال', 9: 'التوبة', 10: 'يونس',
@@ -56,13 +55,13 @@ export default function Home() {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   }).format(new Date());
 
-  // ✅ اسم السورة بدل الرقم
   const lastReadLabel = lastRead
     ? `سورة ${SURAH_NAMES[lastRead.surah] ?? lastRead.surah} — آية ${lastRead.ayah}`
     : 'ابدأ القراءة';
 
   return (
     <div className="space-y-6">
+      {/* Hero */}
       <section className="card p-6 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-40 h-40 bg-brand-500/10 rounded-full -translate-x-20 -translate-y-20" />
         <p className="text-sm text-[var(--muted)]">{greg}</p>
@@ -70,6 +69,7 @@ export default function Home() {
         {city && <p className="text-xs text-[var(--muted)] mt-1"><i className="bi bi-geo-alt" /> {city}</p>}
       </section>
 
+      {/* Prayer */}
       <section className="card p-6">
         <div className="flex items-center justify-between">
           <div>
@@ -94,6 +94,7 @@ export default function Home() {
         )}
       </section>
 
+      {/* Quick links — بدون التعلم */}
       <section className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Link to="/quran" className="card p-4 hover:border-brand-500 transition">
           <i className="bi bi-book text-2xl text-brand-600" />
@@ -126,6 +127,21 @@ export default function Home() {
           <p className="font-semibold">99 اسمًا</p>
         </Link>
       </section>
+
+      {/* رابط صغير للتعلّم — اختياري فقط */}
+      <Link
+        to="/learn"
+        className="card p-4 flex items-center gap-3 hover:border-brand-500 transition group opacity-90"
+      >
+        <div className="w-10 h-10 rounded-lg bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center shrink-0">
+          <i className="bi bi-mortarboard text-xl text-brand-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold">تريد أن تتعلّم من الصفر؟</p>
+          <p className="text-xs text-[var(--muted)] mt-0.5">مسارات تعليمية مجانية — اختيارية تمامًا</p>
+        </div>
+        <i className="bi bi-arrow-left text-[var(--muted)] group-hover:text-brand-600 transition" />
+      </Link>
     </div>
   );
 }
