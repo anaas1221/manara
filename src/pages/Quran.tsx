@@ -142,7 +142,7 @@ const SURAHS: SurahMeta[] = [
 ];
 
 // ============================================
-// روابط القرآن الكامل
+// روابط القرآن الكامل PDF
 // ============================================
 const FULL_QURAN_LINKS = [
   {
@@ -160,9 +160,40 @@ const FULL_QURAN_LINKS = [
 ];
 
 // ============================================
-// الكاش
+// روابط CDN (كلها شغالة ومختبرة)
+// ============================================
+const QURAN_CDNS: Array<(id: number) => string> = [
+  (id: number) => `https://api.alquran.cloud/v1/surah/${id}/quran-uthmani`,
+  (id: number) => `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/ara-quranuthmanihaf/${id}.json`,
+];
+
+// ============================================
+// كاشات
 // ============================================
 const pdfCache = new Map<number, Blob>();
+const surahMemoryCache = new Map<number, Ayah[]>();
+
+// ============================================
+// ✅ استخراج النص — يتعامل مع كل الصيغ
+// ============================================
+function extractText(value: any): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'object') {
+    // جرّب كل الخصائص المحتملة
+    return (
+      value.arabic ||
+      value.ar ||
+      value.arab ||
+      value.text ||
+      value.content ||
+      value.value ||
+      ''
+    );
+  }
+  return '';
+}
 
 // ============================================
 // أدوات مساعدة
@@ -197,21 +228,121 @@ function buildFuzzyRegex(query: string): RegExp {
   return new RegExp(pattern, 'gi');
 }
 
+// ============================================
+// جلب نص السورة — سريع + Offline + متعدد CDNs
+// ============================================
 async function fetchSurahText(surahId: number): Promise<Ayah[]> {
-  const cacheKey = `surah-text-${surahId}`;
-  const cached = sessionStorage.getItem(cacheKey);
-  if (cached) {
-    try { return JSON.parse(cached) as Ayah[]; } catch { /* ignore */ }
+  // 1. من الذاكرة
+  if (surahMemoryCache.has(surahId)) {
+    return surahMemoryCache.get(surahId)!;
   }
-  const res = await fetch(`https://api.alquran.cloud/v1/surah/${surahId}/quran-uthmani`);
-  const json = await res.json();
-  if (!json?.data?.ayahs) throw new Error('تعذر التحميل');
-  const ayahs = json.data.ayahs as Ayah[];
-  try { sessionStorage.setItem(cacheKey, JSON.stringify(ayahs)); } catch { /* ignore */ }
-  return ayahs;
+
+  // 2. من IndexedDB
+  try {
+    const cached = await db.quranCache.get(surahId);
+    if (cached?.ayahs && cached.ayahs.length > 0) {
+      surahMemoryCache.set(surahId, cached.ayahs);
+      return cached.ayahs;
+    }
+  } catch { /* ignore */ }
+
+  // 3. من sessionStorage
+  const sessionKey = `surah-${surahId}`;
+  try {
+    const s = sessionStorage.getItem(sessionKey);
+    if (s) {
+      const ayahs = JSON.parse(s) as Ayah[];
+      if (ayahs.length > 0 && typeof ayahs[0].text === 'string') {
+        surahMemoryCache.set(surahId, ayahs);
+        return ayahs;
+      }
+    }
+  } catch { /* ignore */ }
+
+  // 4. جلب من CDNs بالتوازي
+  const controllers = QURAN_CDNS.map(() => new AbortController());
+
+  const fetchPromises = QURAN_CDNS.map(async (urlFn, idx) => {
+    const url = urlFn(surahId);
+    const res = await fetch(url, { signal: controllers[idx].signal });
+    if (!res.ok) throw new Error(`CDN ${idx} failed`);
+    const json = await res.json();
+
+    let ayahs: Ayah[] = [];
+
+    // الصيغة 1: alquran.cloud — { data: { ayahs: [{ numberInSurah, text }] } }
+    if (json?.data?.ayahs && Array.isArray(json.data.ayahs)) {
+      ayahs = json.data.ayahs.map((a: any) => ({
+        numberInSurah: Number(a.numberInSurah) || 0,
+        text: extractText(a.text)
+      }));
+    }
+    // الصيغة 2: fawazahmed0 — { chapter: [{ verse, text }] }
+    else if (Array.isArray(json?.chapter)) {
+      ayahs = json.chapter.map((v: any) => ({
+        numberInSurah: Number(v.verse) || 0,
+        text: extractText(v.text)
+      }));
+    }
+    // الصيغة 3: quran-json — { verses: [{ id, text }] }
+    else if (Array.isArray(json?.verses)) {
+      ayahs = json.verses.map((v: any) => ({
+        numberInSurah: Number(v.id) || 0,
+        text: extractText(v.text)
+      }));
+    }
+    // الصيغة 4: verses كـ object
+    else if (json?.verses && typeof json.verses === 'object') {
+      ayahs = Object.entries(json.verses).map(([num, text]) => ({
+        numberInSurah: parseInt(num),
+        text: extractText(text)
+      }));
+    }
+
+    // ✅ فلترة الآيات الفارغة
+    ayahs = ayahs.filter(a => a.text && a.text.trim().length > 0);
+
+    if (ayahs.length === 0) throw new Error(`CDN ${idx} no valid data`);
+    return ayahs;
+  });
+
+  try {
+    // ✅ Promise.any — أول واحد ينجح
+    const ayahs = await Promise.any(fetchPromises);
+    controllers.forEach(c => c.abort());
+
+    surahMemoryCache.set(surahId, ayahs);
+
+    try {
+      await db.quranCache.put({ id: surahId, ayahs, savedAt: Date.now() });
+    } catch { /* ignore */ }
+
+    try {
+      sessionStorage.setItem(sessionKey, JSON.stringify(ayahs));
+    } catch { /* ignore */ }
+
+    return ayahs;
+  } catch {
+    controllers.forEach(c => c.abort());
+    throw new Error('تعذر التحميل');
+  }
 }
 
-// تظليل الكلمة المبحوث عنها (بدون تشكيل)
+// ============================================
+// Prefetch للسور الشائعة
+// ============================================
+async function prefetchCommonSurahs() {
+  const common = [1, 112, 113, 114, 36, 55, 67, 18];
+  for (const id of common) {
+    try {
+      await fetchSurahText(id);
+    } catch { /* ignore */ }
+  }
+}
+
+// ============================================
+// تظليل الكلمة
+// ============================================
 function highlightText(text: string, query: string) {
   const q = query.trim();
   if (!q || q.length < 2) return text;
@@ -259,7 +390,7 @@ function buildSurahHTML(surah: SurahMeta, ayahs: Ayah[]) {
         ${ayahs.map(a => `<span style="margin-left:3px;">${a.text}<span style="color:#1f6d52;font-weight:bold;font-size:12px;">﴿${a.numberInSurah}﴾</span></span>`).join('')}
       </div>
       <div style="margin-top:20px;padding-top:10px;border-top:1px solid #e4e7e5;text-align:center;color:#64748b;font-size:11px;">
-        <strong style="color:#1f6d52;">منارة</strong> — منصة إسلامية شاملة
+        <strong style="color:#1f6d52;">منارة</strong> — رفيق رحلتك
       </div>
     </div>`;
 }
@@ -300,9 +431,12 @@ export default function Quran() {
   const [copied, setCopied] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfProgress, setPdfProgress] = useState(0);
-  const [prefetchDone, setPrefetchDone] = useState(false);
   const [bookmarks, setBookmarks] = useState<Set<number>>(new Set());
   const [lastRead, setLastRead] = useState<{ surah: number; ayah: number } | null>(null);
+  const [downloadedCount, setDownloadedCount] = useState(0);
+  const [downloadProgress, setDownloadProgress] = useState({ current: 0, total: 114, active: false });
+  const [selectedAyah, setSelectedAyah] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const [verseResults, setVerseResults] = useState<VerseResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -316,17 +450,10 @@ export default function Quran() {
 
   // Prefetch + بيانات محفوظة
   useEffect(() => {
-    const conn = (navigator as any).connection;
-    if (conn?.effectiveType === '4g' || !conn) {
-      FULL_QURAN_LINKS.forEach(link => {
-        const l = document.createElement('link');
-        l.rel = 'prefetch';
-        l.href = link.url;
-        l.as = 'document';
-        document.head.appendChild(l);
-      });
-      setTimeout(() => setPrefetchDone(true), 3000);
-    }
+    db.quranCache.count().then(n => setDownloadedCount(n)).catch(() => {});
+
+    setTimeout(() => { prefetchCommonSurahs(); }, 1500);
+
     db.bookmarks.where('type').equals('favorite').toArray().then(rows => {
       const set = new Set<number>();
       rows.forEach(r => {
@@ -334,10 +461,11 @@ export default function Quran() {
         if (m) set.add(parseInt(m[1]));
       });
       setBookmarks(set);
-    });
+    }).catch(() => {});
+
     db.progress.get('quran').then(p => {
       if (p) setLastRead({ surah: p.surah, ayah: p.ayah });
-    });
+    }).catch(() => {});
   }, []);
 
   // بحث في الآيات
@@ -350,14 +478,14 @@ export default function Quran() {
     }
 
     const cacheKey = `search:${q}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      try {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
         setVerseResults(JSON.parse(cached));
         setSearching(false);
         return;
-      } catch { /* ignore */ }
-    }
+      }
+    } catch { /* ignore */ }
 
     setSearching(true);
     const timer = setTimeout(async () => {
@@ -371,7 +499,7 @@ export default function Quran() {
           surahNumber: m.surah.number,
           surahName: m.surah.name.replace(/^(سُورَةُ|سورة)\s*/, ''),
           verseNumber: m.numberInSurah,
-          text: m.text
+          text: extractText(m.text)
         }));
         setVerseResults(results);
         try { sessionStorage.setItem(cacheKey, JSON.stringify(results)); } catch { /* ignore */ }
@@ -384,7 +512,7 @@ export default function Quran() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // تبديل تلقائي لوضع الآيات
+  // تبديل تلقائي
   useEffect(() => {
     if (query.trim().length < 2) return;
     const surahMatches = smartSearch(query);
@@ -395,7 +523,7 @@ export default function Quran() {
     }
   }, [verseResults, query]);
 
-  // الآيات المطابقة داخل السورة المفتوحة
+  // الآيات المطابقة
   useEffect(() => {
     if (ayahs && activeQuery && activeQuery.trim().length >= 2) {
       const regex = buildFuzzyRegex(activeQuery.trim());
@@ -408,7 +536,7 @@ export default function Quran() {
     }
   }, [ayahs, activeQuery]);
 
-  // Scroll للآية الحالية
+  // Scroll للآية
   useEffect(() => {
     if (matchedAyahs.length > 0 && ayahs) {
       const targetAyah = matchedAyahs[currentMatchIdx];
@@ -436,6 +564,7 @@ export default function Quran() {
     setLoading(true);
     setActiveQuery(searchQuery ?? '');
     setCurrentMatchIdx(0);
+    setSelectedAyah(scrollAyah ?? null);
 
     try {
       const data = await fetchSurahText(surah.id);
@@ -464,6 +593,8 @@ export default function Quran() {
         updatedAt: Date.now()
       });
       setLastRead({ surah: surah.id, ayah: scrollAyah ?? 1 });
+
+      db.quranCache.count().then(n => setDownloadedCount(n)).catch(() => {});
     } catch {
       setError('تعذر تحميل السورة. تأكد من اتصالك بالإنترنت.');
     } finally {
@@ -481,6 +612,7 @@ export default function Quran() {
     setMatchedAyahs([]);
     setCurrentMatchIdx(0);
     setActiveQuery('');
+    setSelectedAyah(null);
     ayahRefs.current.clear();
   };
 
@@ -497,6 +629,24 @@ export default function Quran() {
   const prevMatch = () => {
     if (matchedAyahs.length === 0) return;
     setCurrentMatchIdx((currentMatchIdx - 1 + matchedAyahs.length) % matchedAyahs.length);
+  };
+
+  // ✅ الضغط على آية → حفظ موضع القراءة
+  const handleAyahClick = async (ayahNum: number) => {
+    if (!activeSurah) return;
+    setSelectedAyah(ayahNum);
+
+    try {
+      await db.progress.put({
+        key: 'quran',
+        surah: activeSurah.id,
+        ayah: ayahNum,
+        updatedAt: Date.now()
+      });
+      setLastRead({ surah: activeSurah.id, ayah: ayahNum });
+      setToast(`تم حفظ موضع القراءة · سورة ${activeSurah.name} — آية ${ayahNum}`);
+      setTimeout(() => setToast(null), 2500);
+    } catch { /* ignore */ }
   };
 
   const toggleBookmark = async () => {
@@ -519,6 +669,31 @@ export default function Quran() {
       next.add(activeSurah.id);
       setBookmarks(next);
     }
+  };
+
+  // تحميل كل القرآن Offline
+  const downloadAllForOffline = async () => {
+    if (downloadProgress.active) return;
+    setDownloadProgress({ current: 0, total: 114, active: true });
+    let success = 0;
+    for (let i = 1; i <= 114; i++) {
+      try {
+        await fetchSurahText(i);
+        success++;
+        setDownloadProgress({ current: i, total: 114, active: true });
+      } catch { /* ignore */ }
+    }
+    setDownloadedCount(success);
+    setDownloadProgress({ current: 0, total: 114, active: false });
+  };
+
+  const clearOfflineCache = async () => {
+    if (!confirm('هل تريد حذف كل السور المحفوظة للاستخدام Offline؟')) return;
+    try {
+      await db.quranCache.clear();
+      surahMemoryCache.clear();
+      setDownloadedCount(0);
+    } catch { /* ignore */ }
   };
 
   const downloadPDF = async () => {
@@ -577,7 +752,7 @@ export default function Quran() {
     const content =
       `سورة ${activeSurah.name}\n\n` +
       ayahs.map(a => `${a.text} ﴿${a.numberInSurah}﴾`).join('\n') +
-      `\n\n———\nمنارة — منصة إسلامية شاملة\n`;
+      `\n\n———\nمنارة — رفيق رحلتك\n`;
     triggerDownload(
       new Blob([content], { type: 'text/plain;charset=utf-8' }),
       `منارة - سورة ${activeSurah.name}.txt`
@@ -671,15 +846,65 @@ export default function Quran() {
         </div>
       )}
 
-      {/* روابط القرآن الكامل */}
+      {/* بطاقة التحميل Offline */}
+      <div className="card p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <div className="w-12 h-12 rounded-xl bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center shrink-0">
+            <i className="bi bi-cloud-arrow-down text-2xl text-brand-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold">تحميل القرآن للاستخدام Offline</h3>
+            <p className="text-xs text-[var(--muted)] mt-1">
+              حمّل كل السور مرة واحدة — بعدها الموقع يشتغل من غير إنترنت
+            </p>
+            <div className="flex items-center gap-2 mt-2 text-xs">
+              <span className="text-brand-600 font-semibold">
+                <i className="bi bi-check-circle" /> {downloadedCount} / 114 سورة محفوظة
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {downloadProgress.active ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span>جاري التحميل... {downloadProgress.current} / 114</span>
+              <span>{Math.round((downloadProgress.current / 114) * 100)}%</span>
+            </div>
+            <div className="h-2 bg-[var(--bg)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-brand-600 transition-all duration-300"
+                style={{ width: `${(downloadProgress.current / 114) * 100}%` }}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <button
+              onClick={downloadAllForOffline}
+              disabled={downloadedCount === 114}
+              className="flex-1 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <i className="bi bi-download" />
+              {' '}
+              {downloadedCount === 114 ? 'محمّل بالكامل ✓' : 'تحميل كل السور'}
+            </button>
+            {downloadedCount > 0 && (
+              <button
+                onClick={clearOfflineCache}
+                className="px-4 py-2.5 rounded-lg border border-red-500/30 text-red-600 text-sm font-semibold hover:bg-red-500/10 transition"
+              >
+                <i className="bi bi-trash" /> حذف
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* روابط المصحف الكامل */}
       <div>
         <h2 className="text-sm font-semibold text-[var(--muted)] mb-3">
-          تحميل القرآن كامل (PDF)
-          {prefetchDone && (
-            <span className="text-xs text-brand-600 mr-2">
-              <i className="bi bi-lightning-charge-fill" /> جاهز
-            </span>
-          )}
+          <i className="bi bi-file-earmark-pdf text-brand-600" /> المصحف الكامل — PDF
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {FULL_QURAN_LINKS.map((link, idx) => (
@@ -711,7 +936,7 @@ export default function Quran() {
           type="text"
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="ابحث باسم السورة، رقمها، أو أي كلمة من غير تشكيل..."
+          placeholder="ابحث باسم السورة، رقمها، أو أي كلمة..."
           className="w-full pr-10 pl-10 py-3 rounded-xl border border-[var(--border)] bg-[var(--card)] outline-none focus:border-brand-500"
         />
         {query && (
@@ -756,35 +981,34 @@ export default function Quran() {
         <div className="space-y-3">
           {searching && (
             <p className="text-center text-sm text-[var(--muted)] py-6">
-              <i className="bi bi-hourglass-split animate-pulse" /> جاري البحث في الآيات…
+              <i className="bi bi-hourglass-split animate-pulse" /> جاري البحث...
             </p>
           )}
           {!searching && !hasVerseResults && (
             <p className="text-center text-sm text-[var(--muted)] py-6">
-              لا توجد آيات تحتوي على "<span className="font-semibold">{query}</span>"
+              لا توجد آيات تحتوي على "{query}"
             </p>
           )}
-          {!searching &&
-            verseResults.map((r, i) => (
-              <button
-                key={`${r.surahNumber}-${r.verseNumber}-${i}`}
-                onClick={() => {
-                  const s = SURAHS.find(x => x.id === r.surahNumber);
-                  if (s) openSurah(s, r.verseNumber, query);
-                }}
-                className="card p-4 text-right w-full hover:border-brand-500 transition"
-              >
-                <div className="flex items-center justify-between mb-2 text-xs text-[var(--muted)]">
-                  <span className="font-semibold text-brand-600">
-                    <i className="bi bi-book" /> سورة {r.surahName} · الآية {r.verseNumber}
-                  </span>
-                  <i className="bi bi-arrow-left" />
-                </div>
-                <div className="font-quran text-lg leading-loose">
-                  {highlightText(r.text, query)}
-                </div>
-              </button>
-            ))}
+          {!searching && verseResults.map((r, i) => (
+            <button
+              key={`${r.surahNumber}-${r.verseNumber}-${i}`}
+              onClick={() => {
+                const s = SURAHS.find(x => x.id === r.surahNumber);
+                if (s) openSurah(s, r.verseNumber, query);
+              }}
+              className="card p-4 text-right w-full hover:border-brand-500 transition"
+            >
+              <div className="flex items-center justify-between mb-2 text-xs text-[var(--muted)]">
+                <span className="font-semibold text-brand-600">
+                  <i className="bi bi-book" /> سورة {r.surahName} · الآية {r.verseNumber}
+                </span>
+                <i className="bi bi-arrow-left" />
+              </div>
+              <div className="font-quran text-lg leading-loose">
+                {highlightText(r.text, query)}
+              </div>
+            </button>
+          ))}
         </div>
       )}
 
@@ -803,14 +1027,6 @@ export default function Quran() {
             <div className="col-span-full card p-8 text-center text-[var(--muted)]">
               <i className="bi bi-search text-3xl mb-3 block" />
               <p>لا توجد سور مطابقة</p>
-              {hasVerseResults && (
-                <button
-                  onClick={() => setSearchMode('verses')}
-                  className="mt-3 text-sm text-brand-600 hover:underline"
-                >
-                  <i className="bi bi-quote" /> عرض {verseResults.length} آية تحتوي على الكلمة
-                </button>
-              )}
             </div>
           )}
         </div>
@@ -840,6 +1056,7 @@ export default function Quran() {
                   <div className="font-bold text-sm">سورة {activeSurah.name}</div>
                   <div className="text-[10px] text-[var(--muted)]">
                     {activeSurah.verses} آية · {activeSurah.type}
+                    {selectedAyah && ` · موضعك: آية ${selectedAyah}`}
                   </div>
                 </div>
               </div>
@@ -850,13 +1067,8 @@ export default function Quran() {
                     bookmarks.has(activeSurah.id) ? 'text-brand-600' : ''
                   }`}
                   aria-label="حفظ"
-                  title="إضافة للمفضلة"
                 >
-                  <i
-                    className={`bi ${
-                      bookmarks.has(activeSurah.id) ? 'bi-bookmark-fill' : 'bi-bookmark'
-                    } text-lg`}
-                  />
+                  <i className={`bi ${bookmarks.has(activeSurah.id) ? 'bi-bookmark-fill' : 'bi-bookmark'} text-lg`} />
                 </button>
                 <button
                   onClick={closeSurah}
@@ -883,16 +1095,14 @@ export default function Quran() {
                   <button
                     onClick={prevMatch}
                     disabled={matchedAyahs.length <= 1}
-                    className="p-1.5 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 disabled:opacity-30"
-                    aria-label="السابق"
+                    className="p-1.5 rounded-lg hover:bg-yellow-100 disabled:opacity-30"
                   >
                     <i className="bi bi-chevron-up text-sm" />
                   </button>
                   <button
                     onClick={nextMatch}
                     disabled={matchedAyahs.length <= 1}
-                    className="p-1.5 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 disabled:opacity-30"
-                    aria-label="التالي"
+                    className="p-1.5 rounded-lg hover:bg-yellow-100 disabled:opacity-30"
                   >
                     <i className="bi bi-chevron-down text-sm" />
                   </button>
@@ -905,13 +1115,21 @@ export default function Quran() {
               {loading && (
                 <div className="text-center py-10 text-[var(--muted)]">
                   <i className="bi bi-hourglass-split text-2xl animate-pulse" />
-                  <p className="mt-2 text-sm">جاري التحميل…</p>
+                  <p className="mt-2 text-sm">جاري التحميل...</p>
                 </div>
               )}
               {error && (
                 <div className="text-center py-10 text-red-500 text-sm">
                   <i className="bi bi-exclamation-triangle text-2xl" />
                   <p className="mt-2">{error}</p>
+                  <button
+                    onClick={() => {
+                      if (activeSurah) openSurah(activeSurah);
+                    }}
+                    className="mt-4 px-4 py-2 rounded-lg bg-brand-600 text-white text-sm"
+                  >
+                    <i className="bi bi-arrow-clockwise" /> إعادة المحاولة
+                  </button>
                 </div>
               )}
               {ayahs && (
@@ -921,20 +1139,29 @@ export default function Quran() {
                       بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
                     </p>
                   )}
-                  {ayahs.map(a => (
-                    <span
-                      key={a.numberInSurah}
-                      ref={el => {
-                        if (el) ayahRefs.current.set(a.numberInSurah, el);
-                      }}
-                      className="ml-1 inline transition-all"
-                    >
-                      {activeQuery ? highlightText(a.text, activeQuery) : a.text}
-                      <span className="text-brand-600 font-bold text-sm mx-1">
-                        ﴿{a.numberInSurah}﴾
+                  {ayahs.map(a => {
+                    const isSelected = selectedAyah === a.numberInSurah;
+                    return (
+                      <span
+                        key={a.numberInSurah}
+                        ref={el => { if (el) ayahRefs.current.set(a.numberInSurah, el); }}
+                        onClick={() => handleAyahClick(a.numberInSurah)}
+                        className={`ml-1 inline transition-all cursor-pointer rounded px-0.5 ${
+                          isSelected
+                            ? 'bg-brand-50 dark:bg-brand-900/30 ring-1 ring-brand-500/40'
+                            : 'hover:bg-[var(--bg)]'
+                        }`}
+                        title={`اضغط لحفظ موضعك · آية ${a.numberInSurah}`}
+                      >
+                        {activeQuery ? highlightText(a.text, activeQuery) : a.text}
+                        <span className={`font-bold text-sm mx-1 ${
+                          isSelected ? 'text-brand-700 dark:text-brand-300' : 'text-brand-600'
+                        }`}>
+                          ﴿{a.numberInSurah}﴾
+                        </span>
                       </span>
-                    </span>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -965,7 +1192,7 @@ export default function Quran() {
                 {pdfLoading && (
                   <div className="px-3 pt-2">
                     <div className="flex items-center justify-between text-xs text-[var(--muted)] mb-1">
-                      <span>جاري تجهيز PDF…</span>
+                      <span>جاري تجهيز PDF...</span>
                       <span>{pdfProgress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-[var(--bg)] rounded-full overflow-hidden">
@@ -983,11 +1210,7 @@ export default function Quran() {
                     disabled={pdfLoading}
                     className="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-[var(--bg)] text-brand-600 disabled:opacity-50"
                   >
-                    <i
-                      className={`bi ${
-                        pdfLoading ? 'bi-hourglass-split animate-pulse' : 'bi-file-earmark-pdf'
-                      } text-xl`}
-                    />
+                    <i className={`bi ${pdfLoading ? 'bi-hourglass-split animate-pulse' : 'bi-file-earmark-pdf'} text-xl`} />
                     <span className="text-[11px]">{pdfLoading ? 'جاري...' : 'PDF'}</span>
                   </button>
                   <button
@@ -1001,12 +1224,8 @@ export default function Quran() {
                     onClick={copyText}
                     className="flex flex-col items-center gap-1 py-2 rounded-lg hover:bg-[var(--bg)] text-brand-600"
                   >
-                    <i
-                      className={`bi ${
-                        copied ? 'bi-check-circle-fill' : 'bi-clipboard'
-                      } text-xl`}
-                    />
-                    <span className="text-[11px]">{copied ? 'تم النسخ' : 'نسخ'}</span>
+                    <i className={`bi ${copied ? 'bi-check-circle-fill' : 'bi-clipboard'} text-xl`} />
+                    <span className="text-[11px]">{copied ? 'تم' : 'نسخ'}</span>
                   </button>
                   <button
                     onClick={shareSurah}
@@ -1019,6 +1238,13 @@ export default function Quran() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-24 md:bottom-8 left-1/2 -translate-x-1/2 z-[60] bg-brand-600 text-white px-5 py-3 rounded-xl shadow-2xl text-sm font-semibold max-w-[90vw] text-center">
+          <i className="bi bi-check-circle-fill" /> {toast}
         </div>
       )}
     </div>

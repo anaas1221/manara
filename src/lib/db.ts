@@ -5,6 +5,7 @@ export interface Bookmark { id?: number; ref: string; type: 'reading'|'favorite'
 export interface TasbeehSession { id?: number; dhikr: string; count: number; date: string; createdAt: number; }
 export interface ReadingProgress { key: string; surah: number; ayah: number; page?: number; juz?: number; updatedAt: number; }
 export interface PrayerLog { id?: number; date: string; prayer: 'Fajr'|'Dhuhr'|'Asr'|'Maghrib'|'Isha'; status: 'prayed'|'jamaah'|'mosque'|'missed'|'none'; }
+export interface QuranCache { id: number; ayahs: Array<{ numberInSurah: number; text: string }>; savedAt: number; }
 
 export class ManaraDB extends Dexie {
   notes!: Table<Note, number>;
@@ -12,6 +13,7 @@ export class ManaraDB extends Dexie {
   tasbeeh!: Table<TasbeehSession, number>;
   progress!: Table<ReadingProgress, string>;
   prayerLogs!: Table<PrayerLog, number>;
+  quranCache!: Table<QuranCache, number>;
 
   constructor() {
     super('manara-db');
@@ -21,6 +23,14 @@ export class ManaraDB extends Dexie {
       tasbeeh: '++id, dhikr, date, createdAt',
       progress: 'key',
       prayerLogs: '++id, date, prayer'
+    });
+    this.version(2).stores({
+      notes: '++id, ref, createdAt',
+      bookmarks: '++id, ref, type, createdAt',
+      tasbeeh: '++id, dhikr, date, createdAt',
+      progress: 'key',
+      prayerLogs: '++id, date, prayer',
+      quranCache: 'id'
     });
   }
 }
