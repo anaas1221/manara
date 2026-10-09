@@ -9,25 +9,28 @@ export function Header() {
   const { t } = useTranslation();
 
   return (
-    <header className="sticky top-0 z-30 bg-[var(--bg)]/80 backdrop-blur border-b border-[var(--border)]">
-      <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-8 h-14">
-        <Link to="/" className="flex items-center gap-2">
-          <Logo size={24} />
-          <span className="font-bold text-base">
-            {t('app_name')}{' '}
-            <span className="text-[var(--muted)] text-xs hidden sm:inline">| MANARA</span>
+    <header className="sticky top-0 z-30 bg-[var(--bg)]/85 backdrop-blur-md border-b border-[var(--border)]">
+      <div className="w-full max-w-6xl mx-auto flex items-center justify-between px-3 sm:px-4 md:px-8 h-14">
+        <Link to="/" className="flex items-center gap-2 min-w-0">
+          <Logo size={22} />
+          <span className="font-bold text-sm sm:text-base truncate">
+            {t('app_name')}
           </span>
         </Link>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           <LanguageSwitcher />
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label="Theme"
-            className="p-2 rounded-lg hover:bg-[var(--card)]"
+            aria-label="تبديل المظهر"
+            className="p-2 rounded-lg hover:bg-[var(--card)] transition"
           >
             <i className={`bi ${theme === 'dark' ? 'bi-sun' : 'bi-moon'}`} />
           </button>
-          <Link to="/settings" aria-label="Settings" className="p-2 rounded-lg hover:bg-[var(--card)]">
+          <Link
+            to="/settings"
+            aria-label="الإعدادات"
+            className="p-2 rounded-lg hover:bg-[var(--card)] transition"
+          >
             <i className="bi bi-gear" />
           </Link>
         </div>

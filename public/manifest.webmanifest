@@ -1,0 +1,15 @@
+{
+  "name": "منارة — رفيق رحلتك",
+  "short_name": "منارة",
+  "description": "منصة إسلامية تعليمية هادئة تساعدك على التعلم والاقتراب من الله",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f8f7",
+  "theme_color": "#1f6d52",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
